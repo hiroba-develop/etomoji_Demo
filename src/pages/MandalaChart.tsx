@@ -319,7 +319,7 @@ const MandalaChart: React.FC = () => {
                     cell.id
                   )} rounded-2xl shadow-lg p-3 transform hover:scale-105 hover:shadow-2xl transition-all duration-300 group border-2 border-white flex flex-col`}
                 >
-                  {/* 進捗メーター */}
+                  {/* 進捗メーター（表示のみ） */}
                   <div className="mb-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium text-gray-600">
@@ -329,32 +329,14 @@ const MandalaChart: React.FC = () => {
                         {cell.achievement}%
                       </span>
                     </div>
-                    <div className="w-full bg-white/80 rounded-full h-2 shadow-inner mb-1">
+                    <div className="w-full bg-white/80 rounded-full h-3 shadow-inner">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${getMeterColor(
+                        className={`h-3 rounded-full transition-all duration-300 ${getMeterColor(
                           cell.achievement
                         )}`}
                         style={{ width: `${cell.achievement}%` }}
                       />
                     </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={cell.achievement}
-                      onChange={(e) =>
-                        updateMainCell(
-                          cell.id,
-                          "achievement",
-                          parseInt(e.target.value)
-                        )
-                      }
-                      className="w-full h-1 appearance-none bg-transparent cursor-pointer"
-                      style={{
-                        WebkitAppearance: "none",
-                      }}
-                    />
                   </div>
 
                   <div className="flex-1 flex flex-col space-y-2">
@@ -539,25 +521,38 @@ const MandalaChart: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={subCell.achievement}
-                        onChange={(e) =>
-                          updateSubCell(
-                            cellId,
-                            subCell.id,
-                            "achievement",
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-full h-3 rounded-lg appearance-none cursor-pointer bg-white/30 slider"
-                        style={{
-                          background: `linear-gradient(to right, #fff ${subCell.achievement}%, rgba(255,255,255,0.3) ${subCell.achievement}%)`,
-                        }}
-                      />
+                      {/* プログレスバーとスライダーを重ねる */}
+                      <div className="relative">
+                        {/* プログレスバー */}
+                        <div className="w-full bg-white rounded-full h-4 shadow-md border border-gray-200">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 shadow-sm ${getMeterColor(
+                              subCell.achievement
+                            )}`}
+                            style={{ width: `${subCell.achievement}%` }}
+                          />
+                        </div>
+                        {/* スライダーをプログレスバーの上に重ねる */}
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={subCell.achievement}
+                          onChange={(e) =>
+                            updateSubCell(
+                              cellId,
+                              subCell.id,
+                              "achievement",
+                              Number(e.target.value)
+                            )
+                          }
+                          className="absolute top-0 left-0 w-full h-4 appearance-none bg-transparent cursor-pointer"
+                          style={{
+                            WebkitAppearance: "none",
+                          }}
+                        />
+                      </div>
                     </div>
 
                     {/* 進捗メモ */}
