@@ -39,4 +39,38 @@
       opacity: 1;
     }
   }
+
+  /* スライダーのスタイル */
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #67BACA;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: #5AA8B8;
+    transform: scale(1.2);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #67BACA;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+  }
+
+  input[type="range"]::-moz-range-thumb:hover {
+    background: #5AA8B8;
+    transform: scale(1.2);
+  }
 }

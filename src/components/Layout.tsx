@@ -12,6 +12,7 @@ import {
   Trophy,
   Users,
   Briefcase,
+  ChartBar,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import headerIcon from "../../public/header_icon.png";
@@ -81,6 +82,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       href: "/support",
       icon: MessageCircle,
       disabled: true,
+      roleRequired: ["0", "1", "2"],
+    },
+    {
+      name: "マンダラチャート",
+      href: "/mandalaChart",
+      icon: ChartBar,
+      disabled: false,
       roleRequired: ["0", "1", "2"],
     },
   ];
