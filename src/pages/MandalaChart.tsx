@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
-  Target,
-  CheckCircle,
   Save,
   TrendingUp,
-  Star,
   MessageCircle,
   Lightbulb,
   Award,
@@ -96,6 +93,40 @@ const MandalaChart: React.FC = () => {
   // 選択中のセル
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
 
+  // ガイドページ表示状態（null: 非表示, 'center': 最終目標, 0-7: 要素番号）
+  const [showGuidePage, setShowGuidePage] = useState<null | "center" | number>(
+    null
+  );
+
+  // STEP2の現在のページ（0-12の13ページ）
+  const [currentElementPage, setCurrentElementPage] = useState(0);
+
+  // 初回表示時、最終目標が未設定なら目標デザインガイドを開く
+  useEffect(() => {
+    if (!centerGoal) {
+      setShowGuidePage("center");
+    }
+  }, []); // 初回マウント時のみ実行
+
+  // ガイドページでの回答を一時保存（分野数は可変、最終的に8つ選択）
+  const [guideAnswers, setGuideAnswers] = useState<{
+    centerGoalAnswer: string;
+    centerGoalQuestions?: string[]; // 最終目標の深掘り質問の回答
+    centerFeelingAnswer: string;
+    categories: {
+      [key: string]: {
+        title: string;
+        answers: string[];
+        position: number | null; // 1-8の位置、nullは未選択
+      };
+    };
+  }>({
+    centerGoalAnswer: "",
+    centerGoalQuestions: [],
+    centerFeelingAnswer: "",
+    categories: {},
+  });
+
   // 初期化：各メインセルのサブチャートを作成
   useEffect(() => {
     const initialSubCharts: { [key: string]: MandalaSubChart } = {};
@@ -120,6 +151,137 @@ const MandalaChart: React.FC = () => {
 
   const handleBackToMain = () => {
     setSelectedCell(null);
+    setShowGuidePage(null);
+    setCurrentElementPage(0);
+  };
+
+  const handleShowCenterGuide = () => {
+    setShowGuidePage("center");
+  };
+
+  const handleShowElementGuide = (elementIndex: number) => {
+    setShowGuidePage(elementIndex);
+
+    // 既に入力されている要素があれば、その分野を探す
+    const cell = mainCells[elementIndex];
+    if (cell && cell.title) {
+      const categoryIndex = elementCategories.findIndex(
+        (cat) => cat.title === cell.title || cat.placeholder === cell.title
+      );
+      if (categoryIndex >= 0) {
+        setCurrentElementPage(categoryIndex);
+      } else {
+        setCurrentElementPage(0);
+      }
+    } else {
+      setCurrentElementPage(0);
+    }
+    // 初期表示は未選択にするため、positionは自動設定しない
+  };
+
+  const handleNextElementPage = () => {
+    if (currentElementPage < 12) {
+      setCurrentElementPage(currentElementPage + 1);
+    }
+  };
+
+  const handlePrevElementPage = () => {
+    if (currentElementPage > 0) {
+      setCurrentElementPage(currentElementPage - 1);
+    }
+  };
+
+  const handleApplyGuideAnswers = () => {
+    // 中央目標のみ保存する場合
+    if (showGuidePage === "center") {
+      if (guideAnswers.centerGoalAnswer) {
+        setCenterGoal(guideAnswers.centerGoalAnswer);
+      }
+      if (guideAnswers.centerFeelingAnswer) {
+        setCenterFeeling(guideAnswers.centerFeelingAnswer);
+      }
+      alert("最終目標と想いを保存しました！");
+
+      // 最終目標が設定されている場合のみメインチャートに遷移
+      if (guideAnswers.centerGoalAnswer) {
+        setShowGuidePage(null);
+      }
+      return;
+    }
+
+    // 特定の要素を保存する場合
+    if (typeof showGuidePage === "number") {
+      // 現在のページの分野から、選択された位置に保存
+      const currentCategory = `category${elementCategories[currentElementPage].number}`;
+      const categoryData = guideAnswers.categories[currentCategory];
+
+      if (categoryData && categoryData.title) {
+        // positionが設定されている場合はそれを使用、なければ元のshowGuidePageを使用
+        const targetPosition = categoryData.position
+          ? categoryData.position - 1 // 1-8を0-7に変換
+          : showGuidePage;
+
+        setMainCells((prev) =>
+          prev.map((cell, index) =>
+            index === targetPosition
+              ? { ...cell, title: categoryData.title }
+              : cell
+          )
+        );
+
+        const positionNames = [
+          "左上",
+          "中上",
+          "右上",
+          "左中",
+          "右中",
+          "左下",
+          "中下",
+          "右下",
+        ];
+        alert(
+          `${positionNames[targetPosition]}に「${categoryData.title}」を保存しました！`
+        );
+      } else {
+        alert("要素を入力してください。");
+        return;
+      }
+      setShowGuidePage(null);
+      return;
+    }
+
+    // 全体保存（従来の動作）
+    if (guideAnswers.centerGoalAnswer) {
+      setCenterGoal(guideAnswers.centerGoalAnswer);
+    }
+    if (guideAnswers.centerFeelingAnswer) {
+      setCenterFeeling(guideAnswers.centerFeelingAnswer);
+    }
+
+    // 位置ベースで要素を配置
+    const positionMap: { [key: number]: string } = {};
+    Object.values(guideAnswers.categories).forEach((cat) => {
+      if (cat.position && cat.title) {
+        positionMap[cat.position] = cat.title;
+      }
+    });
+
+    setMainCells((prev) =>
+      prev.map((cell, index) => ({
+        ...cell,
+        title: positionMap[index + 1] || cell.title,
+      }))
+    );
+
+    const selectedCount = Object.keys(positionMap).length;
+    if (selectedCount < 8) {
+      alert(
+        `${selectedCount}個の要素が保存されました。メインチャートで残りを記入してください。`
+      );
+    } else {
+      alert("保存しました！8つの要素がメインチャートに反映されました。");
+    }
+    setShowGuidePage(null);
   };
 
   const updateMainCell = (
@@ -151,21 +313,6 @@ const MandalaChart: React.FC = () => {
     }));
   };
 
-  // 各マスの固定色（落ち着いたトーン）
-  const getFixedCellColor = (cellId: string) => {
-    const colors: { [key: string]: string } = {
-      m1: "from-[#ceebe7] to-[#ceebe7]",
-      m2: "from-[#ceebe7] to-[#ceebe7]",
-      m3: "from-[#ceebe7] to-[#ceebe7]",
-      m4: "from-[#ceebe7] to-[#ceebe7]",
-      m5: "from-[#ceebe7] to-[#ceebe7]",
-      m6: "from-[#ceebe7] to-[#ceebe7]",
-      m7: "from-[#ceebe7] to-[#ceebe7]",
-      m8: "from-[#ceebe7] to-[#ceebe7]",
-    };
-    return colors[cellId] || "from-gray-100 to-gray-200";
-  };
-
   // メーターの色（進捗度によって変化）
   const getMeterColor = (achievement: number) => {
     if (achievement >= 80) return "bg-green-500";
@@ -182,16 +329,6 @@ const MandalaChart: React.FC = () => {
     if (achievement >= 40) return "from-yellow-400 to-yellow-500";
     if (achievement >= 20) return "from-orange-400 to-orange-500";
     return "from-gray-300 to-gray-400";
-  };
-
-  const getAchievementIcon = (achievement: number) => {
-    if (achievement >= 80)
-      return <Star className="h-5 w-5 text-yellow-300 fill-yellow-300" />;
-    if (achievement >= 60)
-      return <CheckCircle className="h-5 w-5 text-blue-300" />;
-    if (achievement >= 40)
-      return <TrendingUp className="h-5 w-5 text-orange-300" />;
-    return <Target className="h-5 w-5 text-gray-400" />;
   };
 
   const calculateOverallProgress = () => {
@@ -215,6 +352,746 @@ const MandalaChart: React.FC = () => {
       }
     });
   }, [subCharts]);
+
+  // 分野の定義（中央目標と8要素用）
+  const elementCategories = [
+    {
+      number: 1,
+      title: "キャリア・仕事",
+      color: "from-blue-50 to-blue-100",
+      borderColor: "border-blue-300",
+      deepQuestions: [
+        "あなたが仕事で達成したいことは何ですか？",
+        "なぜそれを達成したいのですか？",
+        "それを達成することで、あなたはどう変わりますか？",
+        "なぜその変化を求めているのですか？",
+        "それが実現したら、どのような気持ちになりますか？",
+        "その願いは、いつ、どんな体験から生まれましたか？",
+      ],
+      placeholder: "例：リーダーシップを発揮できる人材になる",
+    },
+    {
+      number: 2,
+      title: "健康・体力",
+      color: "from-green-50 to-green-100",
+      borderColor: "border-green-300",
+      deepQuestions: [
+        "あなたが手に入れたい健康状態を具体的に教えてください",
+        "なぜその健康状態を手に入れたいのですか？",
+        "健康になることで、何ができるようになりますか？",
+        "なぜそれをやりたいのですか？",
+        "その想いの原点は、どんな体験にありますか？",
+      ],
+      placeholder: "例：毎日エネルギッシュに活動できる体力",
+    },
+    {
+      number: 3,
+      title: "経済・お金",
+      color: "from-yellow-50 to-yellow-100",
+      borderColor: "border-yellow-300",
+      deepQuestions: [
+        "経済的に、どんな状態になりたいですか？",
+        "なぜその状態を目指しているのですか？",
+        "お金があることで実現したいことは何ですか？",
+        "なぜそれを実現したいのですか？",
+        "その背景にある、あなたの価値観は何ですか？",
+        "その価値観は、どんな経験から生まれましたか？",
+      ],
+      placeholder: "例：経済的な不安なく、自由に選択できる",
+    },
+    {
+      number: 4,
+      title: "人間関係",
+      color: "from-pink-50 to-pink-100",
+      borderColor: "border-pink-300",
+      deepQuestions: [
+        "どんな人間関係を築きたいですか？",
+        "なぜそのような関係を求めているのですか？",
+        "その関係があることで、あなたは何を得られますか？",
+        "なぜそれが必要なのですか？",
+        "人間関係に求める本質的なものは何ですか？",
+        "それを求めるようになったきっかけは何ですか？",
+      ],
+      placeholder: "例：互いに支え合える信頼関係",
+    },
+    {
+      number: 5,
+      title: "学び・スキル",
+      color: "from-purple-50 to-purple-100",
+      borderColor: "border-purple-300",
+      deepQuestions: [
+        "どんな知識やスキルを身につけたいですか？",
+        "なぜそれを学びたいのですか？",
+        "それを習得することで、どんな自分になれますか？",
+        "なぜそんな自分になりたいのですか？",
+        "学びを通じて、本当に実現したいことは何ですか？",
+        "その想いは、いつから持っていますか？",
+      ],
+      placeholder: "例：専門性を深めて、唯一無二の存在になる",
+    },
+    {
+      number: 6,
+      title: "趣味・楽しみ",
+      color: "from-orange-50 to-orange-100",
+      borderColor: "border-orange-300",
+      deepQuestions: [
+        "どんなことを楽しみたいですか？",
+        "なぜそれを楽しみたいのですか？",
+        "それをすることで、どんな気持ちになりますか？",
+        "なぜその気持ちを求めているのですか？",
+        "人生で大切にしたい「楽しみ」の本質は何ですか？",
+      ],
+      placeholder: "例：心から没頭できる趣味を持つ",
+    },
+    {
+      number: 7,
+      title: "生活習慣",
+      color: "from-teal-50 to-teal-100",
+      borderColor: "border-teal-300",
+      deepQuestions: [
+        "どんな生活習慣を身につけたいですか？",
+        "なぜその習慣が必要だと感じていますか？",
+        "その習慣があることで、何が変わりますか？",
+        "なぜその変化を求めているのですか？",
+        "理想の日常を送ることで、本当に得たいものは何ですか？",
+      ],
+      placeholder: "例：規則正しく、充実した毎日を送る",
+    },
+    {
+      number: 8,
+      title: "家族・パートナー",
+      color: "from-rose-50 to-rose-100",
+      borderColor: "border-rose-300",
+      deepQuestions: [
+        "家族やパートナーと、どんな関係でいたいですか？",
+        "なぜそのような関係を築きたいのですか？",
+        "それが実現したら、あなたはどう感じますか？",
+        "なぜそう感じたいのですか？",
+        "家族に対する本当の想いは何ですか？",
+        "その想いは、どこから来ていますか？",
+      ],
+      placeholder: "例：家族みんなが笑顔で過ごせる関係",
+    },
+    {
+      number: 9,
+      title: "社会貢献",
+      color: "from-indigo-50 to-indigo-100",
+      borderColor: "border-indigo-300",
+      deepQuestions: [
+        "社会にどんな貢献をしたいですか？",
+        "なぜその貢献をしたいのですか？",
+        "それをすることで、あなたは何を感じますか？",
+        "なぜそう感じたいのですか？",
+        "社会貢献を通じて実現したい本質的なことは何ですか？",
+        "その想いの原点にある体験は何ですか？",
+      ],
+      placeholder: "例：次世代に良い影響を与える存在になる",
+    },
+    {
+      number: 10,
+      title: "精神・心の豊かさ",
+      color: "from-violet-50 to-violet-100",
+      borderColor: "border-violet-300",
+      deepQuestions: [
+        "心の豊かさとは、あなたにとって何ですか？",
+        "なぜそれを求めているのですか？",
+        "それがあることで、人生はどう変わりますか？",
+        "なぜその変化が大切なのですか？",
+        "心の奥底で本当に求めているものは何ですか？",
+      ],
+      placeholder: "例：穏やかで満たされた心の状態",
+    },
+    {
+      number: 11,
+      title: "自己表現・創造",
+      color: "from-fuchsia-50 to-fuchsia-100",
+      borderColor: "border-fuchsia-300",
+      deepQuestions: [
+        "どんな形で自分を表現したいですか？",
+        "なぜそれを表現したいのですか？",
+        "表現することで、何を伝えたいのですか？",
+        "なぜそれを伝えたいのですか？",
+        "自己表現を通じて、本当に実現したいことは何ですか？",
+        "その想いは、どんな体験から生まれましたか？",
+      ],
+      placeholder: "例：自分らしさを形にして発信する",
+    },
+    {
+      number: 12,
+      title: "時間・自由",
+      color: "from-cyan-50 to-cyan-100",
+      borderColor: "border-cyan-300",
+      deepQuestions: [
+        "時間をどう使いたいですか？",
+        "なぜそのように時間を使いたいのですか？",
+        "自由な時間があることで、何をしたいですか？",
+        "なぜそれをしたいのですか？",
+        "時間の自由を通じて、本当に手に入れたいものは何ですか？",
+      ],
+      placeholder: "例：自分の時間を自分でコントロールできる",
+    },
+    {
+      number: 13,
+      title: "その他",
+      color: "from-gray-50 to-gray-100",
+      borderColor: "border-gray-300",
+      deepQuestions: [
+        "あなたの目標に関連する、上記以外の重要な分野は何ですか？",
+        "なぜその分野が重要だと思いますか？",
+        "その分野で達成したいことは何ですか？",
+        "なぜそれを達成したいのですか？",
+        "その分野を通じて、本当に実現したいことは何ですか？",
+        "その想いの原点はどこにありますか？",
+      ],
+      placeholder: "例：地域貢献、環境保護、子育てなど",
+    },
+  ];
+
+  // 中央目標ガイドページ（STEP 1のみ）
+  const renderCenterGuidePage = () => {
+    return (
+      <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto px-2 sm:px-4">
+        {/* ヘッダー */}
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 border border-gray-200">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <button
+              onClick={handleBackToMain}
+              disabled={!centerGoal}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all transform ${
+                !centerGoal
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] text-white hover:shadow-lg hover:scale-105"
+              }`}
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline">メインチャートに戻る</span>
+              <span className="sm:hidden">戻る</span>
+            </button>
+            <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
+              目標デザインガイド
+            </h2>
+            <div className="w-16 sm:w-24 hidden md:block"></div>
+          </div>
+        </div>
+
+        {/* ステップ1: 中央の最終目標 */}
+        <div className="bg-gradient-to-br from-[#4cb5a9] to-[#3a9b8f] rounded-xl shadow-xl p-4 sm:p-8 border-4 border-white">
+          <div className="text-center mb-4 sm:mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
+              ✨ あなたの最終目標は何ですか？
+            </h3>
+            <p className="text-white/90 text-xs sm:text-sm">
+              必ず成し遂げたい、人生の大きな目標を一つ決めましょう
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg space-y-3 sm:space-y-4">
+            {/* 深掘り質問 */}
+            <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+              <div className="bg-gradient-to-r from-[#4cb5a9]/10 to-[#67BACA]/10 rounded-lg p-3 sm:p-4 border-2 border-[#4cb5a9]/30">
+                <p className="text-sm sm:text-base font-semibold text-gray-800 mb-2">
+                  🤔 まず、あなたの心に問いかけてみましょう
+                </p>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  以下の質問に答えながら、あなたの本当に達成したい目標を見つけましょう。
+                </p>
+              </div>
+
+              {[
+                "あなたが人生で成し遂げたいことは何ですか？",
+                "なぜそれを成し遂げたいのですか？",
+                "それを達成したとき、あなたはどんな気持ちになると思いますか？",
+                "なぜその気持ちを得たいのですか？",
+                "その目標の先に、本当に手に入れたいものは何ですか？",
+              ].map((question, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-lg p-3 sm:p-4 border-2 border-gray-200"
+                >
+                  <div className="flex items-start space-x-2 mb-2">
+                    <span className="bg-[#4cb5a9] text-white px-2 py-1 rounded text-xs font-bold flex-shrink-0">
+                      Q{index + 1}.
+                    </span>
+                    <p className="text-sm text-gray-700 font-medium">
+                      {question}
+                    </p>
+                  </div>
+                  <textarea
+                    value={guideAnswers.centerGoalQuestions?.[index] || ""}
+                    onChange={(e) =>
+                      setGuideAnswers((prev) => {
+                        const newQuestions = [
+                          ...(prev.centerGoalQuestions || []),
+                        ];
+                        // 配列のサイズを確保
+                        while (newQuestions.length <= index) {
+                          newQuestions.push("");
+                        }
+                        newQuestions[index] = e.target.value;
+                        return {
+                          ...prev,
+                          centerGoalQuestions: newQuestions,
+                        };
+                      })
+                    }
+                    className="w-full h-16 sm:h-20 border-2 border-gray-300 rounded-lg p-2 sm:p-3 text-sm text-gray-700 focus:border-[#4cb5a9] focus:outline-none resize-none bg-white"
+                    placeholder="回答を入力してください"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* 最終目標の決定 */}
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 sm:p-5 border-3 border-[#4cb5a9]">
+              <label className="block text-sm sm:text-base font-bold text-gray-800 mb-2">
+                <span className="bg-[#4cb5a9] text-white px-3 py-1 rounded text-sm mr-2">
+                  決定
+                </span>
+                あなたの最終目標を一言で表現してください
+              </label>
+              <textarea
+                value={guideAnswers.centerGoalAnswer}
+                onChange={(e) =>
+                  setGuideAnswers((prev) => ({
+                    ...prev,
+                    centerGoalAnswer: e.target.value,
+                  }))
+                }
+                className="w-full h-16 sm:h-20 border-2 border-[#4cb5a9] rounded-lg p-2 sm:p-3 text-sm sm:text-base text-gray-800 focus:border-[#4cb5a9] focus:ring-2 focus:ring-[#4cb5a9]/30 focus:outline-none resize-none bg-white font-semibold"
+                placeholder="例：起業して年商1億円を達成する"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">
+                💭 なぜその目標を達成したいのですか？（あなたの想い）
+              </label>
+              <textarea
+                value={guideAnswers.centerFeelingAnswer}
+                onChange={(e) =>
+                  setGuideAnswers((prev) => ({
+                    ...prev,
+                    centerFeelingAnswer: e.target.value,
+                  }))
+                }
+                className="w-full h-20 sm:h-24 border-2 border-gray-300 rounded-lg p-2 sm:p-3 text-sm sm:text-base text-gray-800 focus:border-[#4cb5a9] focus:outline-none resize-none"
+                placeholder="この目標を達成したいと思った理由、込めた想いや感情を自由に書いてください"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 保存ボタン */}
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+          <div className="text-center space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <Award className="h-5 w-5 sm:h-6 sm:w-6 text-[#4cb5a9]" />
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                回答を保存しますか？
+              </h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 px-2">
+              保存すると、最終目標と想いがメインチャートの中央に反映されます。
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+              <button
+                onClick={handleBackToMain}
+                disabled={!centerGoal}
+                className={`font-bold px-6 py-2.5 sm:py-3 rounded-lg transition-all text-sm sm:text-base order-2 sm:order-1 ${
+                  !centerGoal
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-500 text-white hover:bg-gray-600"
+                }`}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleApplyGuideAnswers}
+                className="bg-gradient-to-r from-[#4cb5a9] to-[#3a9b8f] text-white font-bold px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg hover:shadow-lg transition-all transform hover:scale-105 flex items-center justify-center space-x-2 text-sm sm:text-base order-1 sm:order-2"
+              >
+                <Save className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>保存してメインチャートへ</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 要素ガイドページ（STEP 2のみ）
+  const renderElementGuidePage = () => {
+    return (
+      <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto px-2 sm:px-4">
+        {/* ヘッダー */}
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 border border-gray-200">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <button
+              onClick={handleBackToMain}
+              disabled={!centerGoal}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all transform ${
+                !centerGoal
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] text-white hover:shadow-lg hover:scale-105"
+              }`}
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline">メインチャートに戻る</span>
+              <span className="sm:hidden">戻る</span>
+            </button>
+            <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
+              目標デザインガイド - 要素を考える
+            </h2>
+            <div className="w-16 sm:w-24 hidden md:block"></div>
+          </div>
+        </div>
+
+        {/* ステップ2: 8つの要素 */}
+        <div className="bg-white rounded-xl shadow-xl p-4 sm:p-8 border-2 border-gray-200">
+          <div className="text-center mb-4 sm:mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
+              🎯 目標達成に必要な要素を考えましょう
+            </h3>
+            <p className="text-gray-600 text-xs sm:text-sm px-2">
+              質問に答えながら思考を深め、目標要素を決めてください。
+              <br className="hidden sm:inline" />
+              <span className="sm:hidden"> </span>
+              全ての分野に答える必要はありません。あなたの目標に関連する分野だけで構いません。
+            </p>
+
+            {/* ページインジケーター */}
+            <div className="mt-4 flex flex-col items-center space-y-3">
+              <span className="text-sm font-bold text-gray-600">
+                分野 {currentElementPage + 1} / {elementCategories.length}
+              </span>
+              <div className="flex space-x-1">
+                {elementCategories.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentElementPage(index)}
+                    className={`h-2 rounded-full transition-all hover:opacity-80 ${
+                      index === currentElementPage
+                        ? "bg-purple-500 w-6"
+                        : "bg-gray-300 w-2 hover:bg-gray-400"
+                    }`}
+                    title={`${elementCategories[index].title}に移動`}
+                  />
+                ))}
+              </div>
+
+              {/* 分野名のタブ */}
+              <div className="w-full overflow-x-auto -mx-2 sm:mx-0">
+                <div
+                  className="flex gap-2 px-2 sm:px-4 pb-2"
+                  style={{ minWidth: "max-content" }}
+                >
+                  {elementCategories.map((category, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentElementPage(index)}
+                      className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                        index === currentElementPage
+                          ? "bg-purple-500 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {category.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            {elementCategories
+              .filter((_, index) => index === currentElementPage)
+              .map((category, index) => (
+                <div
+                  key={index}
+                  className={`bg-gradient-to-br ${category.color} rounded-xl p-4 sm:p-6 border-2 ${category.borderColor} shadow-md`}
+                >
+                  {/* カテゴリーヘッダー */}
+                  <div className="flex items-center space-x-2 sm:space-x-3 mb-4 sm:mb-5">
+                    <div className="bg-purple-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center font-bold text-base sm:text-lg shadow-md flex-shrink-0">
+                      {category.number}
+                    </div>
+                    <h4 className="text-lg sm:text-xl font-bold text-gray-800">
+                      {category.title}
+                    </h4>
+                  </div>
+
+                  {/* 深掘り質問と記述欄 */}
+                  <div className="space-y-4 mb-4">
+                    <p className="text-xs font-bold text-purple-700 flex items-center">
+                      <Lightbulb className="h-4 w-4 mr-1" />
+                      思考を深める質問
+                    </p>
+                    {category.deepQuestions.map((question, qIndex) => {
+                      const categoryKey = `category${category.number}`;
+                      const currentCategory = guideAnswers.categories[
+                        categoryKey
+                      ] || {
+                        title: "",
+                        answers: [],
+                        selected: false,
+                      };
+
+                      return (
+                        <div
+                          key={qIndex}
+                          className="bg-white/70 rounded-lg p-3 sm:p-4"
+                        >
+                          <div className="mb-2 flex items-start">
+                            <span className="text-purple-500 mr-2 font-bold min-w-[24px] text-sm">
+                              Q{qIndex + 1}.
+                            </span>
+                            <p className="text-sm text-gray-700 font-medium">
+                              {question}
+                            </p>
+                          </div>
+                          <textarea
+                            value={currentCategory.answers[qIndex] || ""}
+                            onChange={(e) =>
+                              setGuideAnswers((prev) => {
+                                const newAnswers = [
+                                  ...(prev.categories[categoryKey]?.answers ||
+                                    []),
+                                ];
+                                newAnswers[qIndex] = e.target.value;
+                                return {
+                                  ...prev,
+                                  categories: {
+                                    ...prev.categories,
+                                    [categoryKey]: {
+                                      ...prev.categories[categoryKey],
+                                      title:
+                                        prev.categories[categoryKey]?.title ||
+                                        "",
+                                      answers: newAnswers,
+                                      position:
+                                        prev.categories[categoryKey]
+                                          ?.position || null,
+                                    },
+                                  },
+                                };
+                              })
+                            }
+                            className="w-full h-20 sm:h-24 border-2 border-gray-300 rounded-lg p-2 sm:p-3 text-sm text-gray-700 focus:border-purple-500 focus:outline-none resize-none bg-white"
+                            placeholder="回答を入力してください"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 最終的な要素入力と位置選択 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 border-2 border-purple-300">
+                    <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">
+                      <span className="bg-purple-500 text-white px-2 py-1 rounded text-xs mr-2">
+                        決定
+                      </span>
+                      <span className="text-xs sm:text-sm">
+                        この分野の要素を一言で表現してください
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        guideAnswers.categories[`category${category.number}`]
+                          ?.title || ""
+                      }
+                      onChange={(e) =>
+                        setGuideAnswers((prev) => {
+                          const categoryKey = `category${category.number}`;
+                          return {
+                            ...prev,
+                            categories: {
+                              ...prev.categories,
+                              [categoryKey]: {
+                                ...prev.categories[categoryKey],
+                                title: e.target.value,
+                                answers:
+                                  prev.categories[categoryKey]?.answers || [],
+                                position:
+                                  prev.categories[categoryKey]?.position ||
+                                  null,
+                              },
+                            },
+                          };
+                        })
+                      }
+                      className="w-full border-2 border-purple-400 rounded-lg p-2 sm:p-3 text-sm sm:text-base font-semibold text-gray-800 focus:border-purple-600 focus:outline-none bg-purple-50 mb-3"
+                      placeholder={category.placeholder}
+                    />
+
+                    <div className="space-y-2">
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700">
+                        マンダラチャートの配置位置:
+                      </label>
+                      <select
+                        value={
+                          guideAnswers.categories[`category${category.number}`]
+                            ?.position || ""
+                        }
+                        onChange={(e) => {
+                          const newPosition = e.target.value
+                            ? Number(e.target.value)
+                            : null;
+                          setGuideAnswers((prev) => {
+                            const categoryKey = `category${category.number}`;
+
+                            return {
+                              ...prev,
+                              categories: {
+                                ...prev.categories,
+                                [categoryKey]: {
+                                  ...prev.categories[categoryKey],
+                                  title:
+                                    prev.categories[categoryKey]?.title || "",
+                                  answers:
+                                    prev.categories[categoryKey]?.answers || [],
+                                  position: newPosition,
+                                },
+                              },
+                            };
+                          });
+                        }}
+                        className="w-full sm:w-auto border-2 border-purple-400 rounded-lg p-2 text-sm font-semibold text-gray-800 focus:border-purple-600 focus:outline-none bg-white"
+                      >
+                        <option value="">未選択</option>
+                        {[
+                          "左上",
+                          "中上",
+                          "右上",
+                          "左中",
+                          "右中",
+                          "左下",
+                          "中下",
+                          "右下",
+                        ].map((posName, index) => {
+                          const posValue = index + 1; // 1-8の位置番号
+                          return (
+                            <option key={posValue} value={posValue}>
+                              {posName}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {/* ページネーションナビゲーション */}
+          <div className="flex items-center justify-between mt-4 sm:mt-6 pt-4 sm:pt-6 border-t-2 border-gray-200 gap-2">
+            <button
+              onClick={handlePrevElementPage}
+              disabled={currentElementPage === 0}
+              className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all text-sm sm:text-base ${
+                currentElementPage === 0
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:shadow-lg transform hover:scale-105"
+              }`}
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline">前の分野</span>
+              <span className="sm:hidden">前へ</span>
+            </button>
+
+            <div className="text-center flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-semibold truncate px-2">
+                {elementCategories[currentElementPage].title}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {currentElementPage + 1} / {elementCategories.length}
+              </p>
+            </div>
+
+            <button
+              onClick={handleNextElementPage}
+              disabled={currentElementPage === 12}
+              className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-bold transition-all text-sm sm:text-base ${
+                currentElementPage === 12
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:shadow-lg transform hover:scale-105"
+              }`}
+            >
+              <span className="hidden sm:inline">次の分野</span>
+              <span className="sm:hidden">次へ</span>
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 rotate-180" />
+            </button>
+          </div>
+        </div>
+
+        {/* 保存ボタン */}
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border-2 border-[#4cb5a9] sticky bottom-2 sm:bottom-4">
+          <div className="text-center space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-center space-x-2">
+              <Award className="h-5 w-5 sm:h-6 sm:w-6 text-[#4cb5a9]" />
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">
+                回答を保存しますか？
+              </h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 px-2">
+              {typeof showGuidePage === "number" ? (
+                <>
+                  {(() => {
+                    const currentCategory = `category${elementCategories[currentElementPage].number}`;
+                    const categoryData =
+                      guideAnswers.categories[currentCategory];
+                    const targetPosition = categoryData?.position
+                      ? categoryData.position - 1
+                      : showGuidePage;
+                    const positionNames = [
+                      "左上",
+                      "中上",
+                      "右上",
+                      "左中",
+                      "右中",
+                      "左下",
+                      "中下",
+                      "右下",
+                    ];
+
+                    return `この要素がマンダラチャートの${positionNames[targetPosition]}に保存されます。`;
+                  })()}
+                </>
+              ) : (
+                <>
+                  保存すると、中央の最終目標・想いと、位置を選択した分野の要素がメインチャートに反映されます。
+                  <br className="hidden sm:inline" />
+                  <span className="sm:hidden"> </span>
+                  13の分野から、あなたの目標に関連する要素を最大8つ選び、配置位置を指定してください。
+                </>
+              )}
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+              <button
+                onClick={handleBackToMain}
+                disabled={!centerGoal}
+                className={`font-bold px-6 py-2.5 sm:py-3 rounded-lg transition-all text-sm sm:text-base order-2 sm:order-1 ${
+                  !centerGoal
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-500 text-white hover:bg-gray-600"
+                }`}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleApplyGuideAnswers}
+                className="bg-gradient-to-r from-[#4cb5a9] to-[#3a9b8f] text-white font-bold px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg hover:shadow-lg transition-all transform hover:scale-105 flex items-center justify-center space-x-2 text-sm sm:text-base order-1 sm:order-2"
+              >
+                <Save className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>保存してメインチャートへ</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // メイン画面（3x3グリッド）
   const renderMainChart = () => {
@@ -249,6 +1126,7 @@ const MandalaChart: React.FC = () => {
                 )}
               </div>
             </div>
+
             {/* 保存ボタン */}
             <div className="max-w-5xl ml-auto">
               <div className="mt-4 text-right">
@@ -268,114 +1146,151 @@ const MandalaChart: React.FC = () => {
           </div>
         </div>
 
-        {/* 3x3グリッド */}
-        <div className="max-w-10xl mx-auto">
-          <div className="grid grid-cols-3 gap-4 p-4">
+        {/* 3x3グリッド - マンダラチャートスタイル */}
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 gap-0 border-4 border-gray-400 bg-white shadow-2xl rounded-xl">
             {positions.map(({ idx }) => {
               // 中央のセル
               if (idx === -1) {
                 return (
                   <div
                     key="center"
-                    className="h-64 bg-gradient-to-br from-[#4cb5a9] to-[#4cb5a9] rounded-2xl shadow-2xl p-4 flex flex-col items-center justify-center transition-all duration-300 border-4 border-white"
+                    className="aspect-square bg-gradient-to-br from-[#4cb5a9] to-[#4cb5a9] p-6 flex flex-col items-center justify-center transition-all duration-300 border-2 border-gray-800 group relative"
                   >
-                    <div className="mb-2 text-white text-xs text-center font-medium">
-                      ✨ すべての起点となる想い ✨
+                    <div className="mb-3 text-white text-sm text-center font-bold">
+                      ✨ 最終目標 ✨
                     </div>
                     {/* 中央目標 */}
                     <textarea
                       value={centerGoal}
                       onChange={(e) => setCenterGoal(e.target.value)}
-                      className="w-full h-16 bg-white/95 rounded-lg p-2 text-center font-bold text-base text-gray-800 resize-none focus:ring-4 focus:ring-yellow-400 focus:outline-none shadow-inner mb-2"
+                      className="w-full min-h-[80px] max-h-40 bg-white border-2 border-white p-3 text-center font-bold text-lg text-gray-800 resize-none focus:ring-4 focus:ring-yellow-400 focus:outline-none overflow-y-auto"
                       placeholder="必ず成し遂げたい目標"
+                      rows={2}
+                      style={{
+                        height: "auto",
+                        minHeight: "80px",
+                      }}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = "auto";
+                        target.style.height =
+                          Math.min(target.scrollHeight, 160) + "px";
+                      }}
                     />
 
-                    {/* なぜこの目標を掲げたのか */}
-                    <div className="w-full bg-white/95 rounded-lg p-2 shadow-inner flex-1">
-                      <div className="flex items-center space-x-1 mb-1">
-                        <MessageCircle className="h-3 w-3 text-red-400" />
-                        <label className="text-xs font-medium text-gray-600">
-                          なぜこの目標を？
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={handleShowCenterGuide}
+                        className="text-center text-xs font-medium bg-purple-500 text-white rounded px-3 py-1 hover:bg-purple-600 shadow-md whitespace-nowrap"
+                      >
+                        📝 目標を考える
+                      </button>
+                    </div>
+
+                    {/* なぜこの目標を掲げたのか - ホバー時に吹き出しとして表示 */}
+                    <div className="absolute left-full ml-6 top-1/2 -translate-y-1/2 w-96 bg-gradient-to-br from-white to-blue-50 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.25)] p-6 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 border-4 border-[#4cb5a9] animate-in">
+                      {/* 吹き出しの三角形 - より大きく目立つように */}
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[20px] border-t-transparent border-b-[20px] border-b-transparent border-r-[24px] border-r-[#4cb5a9] drop-shadow-lg"></div>
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 ml-1 w-0 h-0 border-t-[16px] border-t-transparent border-b-[16px] border-b-transparent border-r-[20px] border-r-white"></div>
+
+                      {/* ヘッダー部分 */}
+                      <div className="flex items-center space-x-2 mb-4 pb-3 border-b-2 border-[#4cb5a9]/30">
+                        <div className="bg-[#4cb5a9] rounded-full p-2">
+                          <MessageCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <label className="text-base font-bold text-gray-800">
+                          なぜこの目標を掲げたのか？
                         </label>
                       </div>
-                      <textarea
-                        value={centerFeeling}
-                        onChange={(e) => setCenterFeeling(e.target.value)}
-                        className="w-full h-full text-xs text-gray-700 placeholder-gray-400 focus:outline-none bg-transparent resize-none"
-                        placeholder="この目標に込めた想い・感情"
-                        rows={3}
-                        style={{ height: "10vh" }}
-                      />
+
+                      {/* 表示エリア（読み取り専用） */}
+                      <div className="relative">
+                        <div className="w-full h-36 text-sm text-gray-700 bg-gray-50 rounded-2xl border-3 border-[#4cb5a9]/20 p-4 shadow-inner overflow-y-auto">
+                          {centerFeeling ? (
+                            <p className="whitespace-pre-wrap">
+                              {centerFeeling}
+                            </p>
+                          ) : (
+                            <p className="text-gray-400 italic">
+                              💭 目標デザインガイドで想いを記入してください
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 下部のヒント */}
+                      <div className="mt-3 text-xs text-gray-500 text-center italic">
+                        ✨ あなたの想いが、目標達成への原動力になります
+                      </div>
                     </div>
                   </div>
                 );
               }
 
               const cell = mainCells[idx];
+              const cornerClass =
+                idx === 0
+                  ? "rounded-tl-lg" // 左上
+                  : idx === 2
+                  ? "rounded-tr-lg" // 右上
+                  : idx === 5
+                  ? "rounded-bl-lg" // 左下
+                  : idx === 7
+                  ? "rounded-br-lg" // 右下
+                  : "";
               return (
                 <div
                   key={cell.id}
-                  className={`h-64 bg-gradient-to-br ${getFixedCellColor(
-                    cell.id
-                  )} rounded-2xl shadow-lg p-3 transform hover:scale-105 hover:shadow-2xl transition-all duration-300 group border-2 border-white flex flex-col`}
+                  className={`aspect-square bg-[#f8fffe] p-4 transform hover:bg-[#e8f7f5] transition-all duration-200 group border border-gray-800 flex flex-col relative ${cornerClass}`}
                 >
-                  {/* 進捗メーター（表示のみ） */}
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-gray-600">
-                        進捗度
-                      </span>
-                      <span className="text-sm font-bold text-gray-700">
+                  {/* 達成度表示 */}
+                  <div className="absolute top-2 right-2">
+                    <div className="bg-white rounded-full px-2 py-1 shadow-sm border border-gray-300">
+                      <span className="text-xs font-bold text-gray-700">
                         {cell.achievement}%
                       </span>
                     </div>
-                    <div className="w-full bg-white/80 rounded-full h-3 shadow-inner">
-                      <div
-                        className={`h-3 rounded-full transition-all duration-300 ${getMeterColor(
-                          cell.achievement
-                        )}`}
-                        style={{ width: `${cell.achievement}%` }}
-                      />
-                    </div>
                   </div>
 
-                  <div className="flex-1 flex flex-col space-y-2">
-                    <input
-                      type="text"
+                  <div className="flex-1 flex flex-col justify-center">
+                    <textarea
                       value={cell.title}
                       onChange={(e) =>
                         updateMainCell(cell.id, "title", e.target.value)
                       }
-                      className="w-full bg-white rounded-lg px-2 py-1.5 text-center font-semibold text-gray-800 placeholder-gray-400 text-sm focus:ring-2 focus:ring-[#67BACA] focus:outline-none transition-all shadow-sm"
-                      placeholder="目標達成するための要素"
+                      className="w-full bg-gray-50 border-2 border-gray-300 px-3 py-2 text-center font-semibold text-gray-800 text-sm min-h-[40px] max-h-32 focus:bg-white focus:border-[#4cb5a9] focus:outline-none resize-none overflow-y-auto"
+                      placeholder="要素を入力"
+                      rows={1}
+                      style={{
+                        height: "auto",
+                        minHeight: "40px",
+                      }}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = "auto";
+                        target.style.height =
+                          Math.min(target.scrollHeight, 128) + "px";
+                      }}
                     />
-
-                    {/* なぜこれを目指すのか */}
-                    <div className="bg-white rounded-lg px-2 py-1.5 shadow-sm flex-1">
-                      <div className="flex items-center space-x-1 mb-1">
-                        <MessageCircle className="h-3 w-3 text-[#67BACA]" />
-                        <label className="text-xs font-bold text-gray-700">
-                          なぜ？
-                        </label>
-                      </div>
-                      <textarea
-                        value={cell.feeling || ""}
-                        onChange={(e) =>
-                          updateMainCell(cell.id, "feeling", e.target.value)
-                        }
-                        className="w-full text-xs text-gray-700 placeholder-gray-400 focus:outline-none bg-transparent resize-none"
-                        placeholder="目指す理由・想い・感情"
-                        rows={2}
-                      />
-                    </div>
                   </div>
 
-                  <button
-                    onClick={() => handleMainCellClick(cell.id)}
-                    className="mt-2 text-center text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 backdrop-blur-sm rounded px-2 py-1 text-gray-700 hover:bg-white shadow-sm"
-                  >
-                    💡 詳細設定へ
-                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() =>
+                        handleShowElementGuide(idx < 4 ? idx : idx - 1)
+                      }
+                      className="text-center text-xs font-medium bg-purple-500 text-white rounded px-3 py-1 hover:bg-purple-600 shadow-md whitespace-nowrap"
+                    >
+                      📝 要素を考える
+                    </button>
+                    <button
+                      onClick={() => handleMainCellClick(cell.id)}
+                      className="text-center text-xs font-medium bg-[#4cb5a9] text-white rounded px-3 py-1 hover:bg-[#3a9b8f] shadow-md whitespace-nowrap"
+                    >
+                      💡 詳細チャートへ
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -459,18 +1374,18 @@ const MandalaChart: React.FC = () => {
           </div>
         </div>
 
-        {/* 3x3グリッド */}
-        <div className="max-w-10xl mx-auto">
-          <div className="grid grid-cols-3 gap-4 p-4">
+        {/* 3x3グリッド - サブチャート */}
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 gap-0 border-4 border-gray-400 bg-white shadow-2xl rounded-xl">
             {positions.map(({ idx }) => {
               // 中央のセル（親目標）
               if (idx === -1) {
                 return (
                   <div
                     key="center"
-                    className={`h-64 bg-gradient-to-br ${getAchievementColor(
+                    className={`aspect-square bg-gradient-to-br ${getAchievementColor(
                       mainCell.achievement
-                    )} rounded-2xl shadow-2xl p-6 flex flex-col items-center justify-center`}
+                    )} p-6 flex flex-col items-center justify-center border-2 border-gray-800`}
                   >
                     {/* <Target className="h-10 w-10 text-white mb-3" /> */}
                     <div className="text-white text-center font-bold text-xl mb-2">
@@ -484,17 +1399,26 @@ const MandalaChart: React.FC = () => {
               }
 
               const subCell = subChart.cells[idx];
+              const cornerClass =
+                idx === 0
+                  ? "rounded-tl-lg" // 左上
+                  : idx === 2
+                  ? "rounded-tr-lg" // 右上
+                  : idx === 5
+                  ? "rounded-bl-lg" // 左下
+                  : idx === 7
+                  ? "rounded-br-lg" // 右下
+                  : "";
               return (
                 <div
                   key={subCell.id}
-                  className={`h-64 bg-gradient-to-br ${getAchievementColor(
+                  className={`aspect-square bg-gradient-to-br ${getAchievementColor(
                     subCell.achievement
-                  )} rounded-2xl shadow-lg p-4 transform hover:scale-102 transition-all duration-300`}
+                  )} p-4 transition-all duration-200 border border-gray-800 ${cornerClass}`}
                 >
-                  <div className="h-full flex flex-col justify-between space-y-3">
+                  <div className="h-full flex flex-col justify-between space-y-2">
                     {/* タイトル入力 */}
-                    <input
-                      type="text"
+                    <textarea
                       value={subCell.title}
                       onChange={(e) =>
                         updateSubCell(
@@ -504,29 +1428,37 @@ const MandalaChart: React.FC = () => {
                           e.target.value
                         )
                       }
-                      className="w-full bg-white/95 rounded-lg px-3 py-2 font-semibold text-gray-800 placeholder-gray-400 focus:ring-4 focus:ring-[#67BACA] focus:outline-none shadow-sm"
+                      className="w-full min-h-[36px] max-h-24 bg-white border-2 border-white px-2 py-1.5 font-semibold text-sm text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-white focus:outline-none resize-none overflow-y-auto"
                       placeholder="具体的な行動"
+                      rows={1}
+                      style={{
+                        height: "auto",
+                        minHeight: "36px",
+                      }}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = "auto";
+                        target.style.height =
+                          Math.min(target.scrollHeight, 96) + "px";
+                      }}
                     />
 
                     {/* 達成度スライダー */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-white text-sm font-medium">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white text-xs font-bold">
                           達成度
                         </span>
-                        <div className="flex items-center space-x-1">
-                          {getAchievementIcon(subCell.achievement)}
-                          <span className="text-white font-bold text-lg">
-                            {subCell.achievement}%
-                          </span>
-                        </div>
+                        <span className="text-white font-bold text-sm bg-white/20 px-2 py-0.5 rounded">
+                          {subCell.achievement}%
+                        </span>
                       </div>
                       {/* プログレスバーとスライダーを重ねる */}
                       <div className="relative">
                         {/* プログレスバー */}
-                        <div className="w-full bg-white rounded-full h-4 shadow-md border border-gray-200">
+                        <div className="w-full bg-white/30 h-3 border border-white/50">
                           <div
-                            className={`h-full rounded-full transition-all duration-300 shadow-sm ${getMeterColor(
+                            className={`h-full transition-all duration-300 ${getMeterColor(
                               subCell.achievement
                             )}`}
                             style={{ width: `${subCell.achievement}%` }}
@@ -547,7 +1479,7 @@ const MandalaChart: React.FC = () => {
                               Number(e.target.value)
                             )
                           }
-                          className="absolute top-0 left-0 w-full h-4 appearance-none bg-transparent cursor-pointer"
+                          className="absolute top-0 left-0 w-full h-3 appearance-none bg-transparent cursor-pointer"
                           style={{
                             WebkitAppearance: "none",
                           }}
@@ -566,9 +1498,19 @@ const MandalaChart: React.FC = () => {
                           e.target.value
                         )
                       }
-                      className="w-full bg-white/95 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 resize-none focus:ring-4 focus:ring-[#67BACA] focus:outline-none shadow-sm"
-                      rows={3}
+                      className="w-full min-h-[48px] max-h-32 bg-white border-2 border-white px-2 py-1.5 text-xs text-gray-800 placeholder-gray-400 resize-none focus:ring-2 focus:ring-white focus:outline-none overflow-y-auto"
+                      rows={2}
                       placeholder="進捗メモ"
+                      style={{
+                        height: "auto",
+                        minHeight: "48px",
+                      }}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = "auto";
+                        target.style.height =
+                          Math.min(target.scrollHeight, 128) + "px";
+                      }}
                     />
                   </div>
                 </div>
@@ -599,7 +1541,13 @@ const MandalaChart: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background p-6">
-      {selectedCell ? renderSubChart(selectedCell) : renderMainChart()}
+      {showGuidePage === "center"
+        ? renderCenterGuidePage()
+        : showGuidePage !== null
+        ? renderElementGuidePage()
+        : selectedCell
+        ? renderSubChart(selectedCell)
+        : renderMainChart()}
     </div>
   );
 };
