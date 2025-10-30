@@ -209,42 +209,33 @@ const MandalaChart: React.FC = () => {
       return;
     }
 
-    // 特定の要素を保存する場合
+    // 要素ガイドページから保存する場合（全ての分野を一括保存）
     if (typeof showGuidePage === "number") {
-      // 現在のページの分野から、選択された位置に保存
-      const currentCategory = `category${elementCategories[currentElementPage].number}`;
-      const categoryData = guideAnswers.categories[currentCategory];
+      // 位置ベースで全ての要素を配置
+      const positionMap: { [key: number]: string } = {};
+      Object.values(guideAnswers.categories).forEach((cat) => {
+        if (cat.position && cat.title) {
+          positionMap[cat.position] = cat.title;
+        }
+      });
 
-      if (categoryData && categoryData.title) {
-        // positionが設定されている場合はそれを使用、なければ元のshowGuidePageを使用
-        const targetPosition = categoryData.position
-          ? categoryData.position - 1 // 1-8を0-7に変換
-          : showGuidePage;
+      setMainCells((prev) =>
+        prev.map((cell, index) => ({
+          ...cell,
+          title: positionMap[index + 1] || cell.title,
+        }))
+      );
 
-        setMainCells((prev) =>
-          prev.map((cell, index) =>
-            index === targetPosition
-              ? { ...cell, title: categoryData.title }
-              : cell
-          )
-        );
-
-        const positionNames = [
-          "左上",
-          "中上",
-          "右上",
-          "左中",
-          "右中",
-          "左下",
-          "中下",
-          "右下",
-        ];
+      const selectedCount = Object.keys(positionMap).length;
+      if (selectedCount === 0) {
+        alert("配置位置を選択してください。");
+        return;
+      } else if (selectedCount < 8) {
         alert(
-          `${positionNames[targetPosition]}に「${categoryData.title}」を保存しました！`
+          `${selectedCount}個の要素が保存されました。メインチャートで残りを記入してください。`
         );
       } else {
-        alert("要素を入力してください。");
-        return;
+        alert("保存しました！8つの要素がメインチャートに反映されました。");
       }
       setShowGuidePage(null);
       return;
@@ -925,59 +916,154 @@ const MandalaChart: React.FC = () => {
                       placeholder={category.placeholder}
                     />
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <label className="block text-xs sm:text-sm font-bold text-gray-700">
-                        マンダラチャートの配置位置:
+                        マンダラチャートの配置位置を選択してください:
                       </label>
-                      <select
-                        value={
-                          guideAnswers.categories[`category${category.number}`]
-                            ?.position || ""
-                        }
-                        onChange={(e) => {
-                          const newPosition = e.target.value
-                            ? Number(e.target.value)
-                            : null;
-                          setGuideAnswers((prev) => {
-                            const categoryKey = `category${category.number}`;
 
-                            return {
-                              ...prev,
-                              categories: {
-                                ...prev.categories,
-                                [categoryKey]: {
-                                  ...prev.categories[categoryKey],
-                                  title:
-                                    prev.categories[categoryKey]?.title || "",
-                                  answers:
-                                    prev.categories[categoryKey]?.answers || [],
-                                  position: newPosition,
-                                },
-                              },
-                            };
-                          });
-                        }}
-                        className="w-full sm:w-auto border-2 border-purple-400 rounded-lg p-2 text-sm font-semibold text-gray-800 focus:border-purple-600 focus:outline-none bg-white"
-                      >
-                        <option value="">未選択</option>
-                        {[
-                          "左上",
-                          "中上",
-                          "右上",
-                          "左中",
-                          "右中",
-                          "左下",
-                          "中下",
-                          "右下",
-                        ].map((posName, index) => {
-                          const posValue = index + 1; // 1-8の位置番号
+                      {/* 要素未入力時の注意メッセージ */}
+                      {(() => {
+                        const categoryKey = `category${category.number}`;
+                        const currentTitle =
+                          guideAnswers.categories[categoryKey]?.title || "";
+                        const isTitleEmpty = !currentTitle.trim();
+
+                        if (isTitleEmpty) {
                           return (
-                            <option key={posValue} value={posValue}>
-                              {posName}
-                            </option>
+                            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-2 text-center">
+                              <p className="text-xs text-yellow-700 font-semibold">
+                                ⚠️ 要素を入力してから配置位置を選択してください
+                              </p>
+                            </div>
                           );
-                        })}
-                      </select>
+                        }
+                        return null;
+                      })()}
+
+                      {/* 配置位置の選択可能な図 */}
+                      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-3 border-2 border-purple-200">
+                        <div className="grid grid-cols-3 gap-1 max-w-[240px] mx-auto">
+                          {[
+                            { pos: 1, label: "左上" },
+                            { pos: 2, label: "中上" },
+                            { pos: 3, label: "右上" },
+                            { pos: 4, label: "左中" },
+                            null, // 中央
+                            { pos: 5, label: "右中" },
+                            { pos: 6, label: "左下" },
+                            { pos: 7, label: "中下" },
+                            { pos: 8, label: "右下" },
+                          ].map((item) => {
+                            if (item === null) {
+                              // 中央（選択不可）
+                              return (
+                                <div
+                                  key="center"
+                                  className="bg-gradient-to-br from-purple-200 to-purple-300 border-2 border-purple-400 rounded p-2 text-center cursor-not-allowed"
+                                >
+                                  <span className="text-xs font-bold text-purple-800">
+                                    最終目標
+                                  </span>
+                                </div>
+                              );
+                            }
+
+                            const categoryKey = `category${category.number}`;
+                            const currentPosition =
+                              guideAnswers.categories[categoryKey]?.position;
+                            const isSelected = currentPosition === item.pos;
+
+                            // 現在の分野の要素タイトルが入力されているかチェック
+                            const currentTitle =
+                              guideAnswers.categories[categoryKey]?.title || "";
+                            const isTitleEmpty = !currentTitle.trim();
+
+                            // 他の分野で既に使用されている位置かチェック
+                            const isOccupiedByOther = Object.entries(
+                              guideAnswers.categories
+                            ).some(
+                              ([key, cat]) =>
+                                key !== categoryKey && cat.position === item.pos
+                            );
+
+                            const isDisabled =
+                              isOccupiedByOther ||
+                              (isTitleEmpty && !isSelected);
+
+                            return (
+                              <button
+                                key={item.pos}
+                                type="button"
+                                disabled={isDisabled}
+                                onClick={() => {
+                                  if (isDisabled) return;
+
+                                  setGuideAnswers((prev) => {
+                                    const newPosition = isSelected
+                                      ? null
+                                      : item.pos;
+
+                                    return {
+                                      ...prev,
+                                      categories: {
+                                        ...prev.categories,
+                                        [categoryKey]: {
+                                          ...prev.categories[categoryKey],
+                                          title:
+                                            prev.categories[categoryKey]
+                                              ?.title || "",
+                                          answers:
+                                            prev.categories[categoryKey]
+                                              ?.answers || [],
+                                          position: newPosition,
+                                        },
+                                      },
+                                    };
+                                  });
+                                }}
+                                className={`rounded p-2 text-center transition-all ${
+                                  isSelected
+                                    ? "bg-gradient-to-br from-purple-500 to-purple-600 border-2 border-purple-700 shadow-lg text-white"
+                                    : isDisabled
+                                    ? "bg-gray-200 border-2 border-gray-400 cursor-not-allowed opacity-50"
+                                    : "bg-white border-2 border-purple-300 hover:bg-purple-100 hover:scale-105 transform"
+                                }`}
+                              >
+                                <span
+                                  className={`text-xs font-bold ${
+                                    isSelected
+                                      ? "text-white"
+                                      : isDisabled
+                                      ? "text-gray-500"
+                                      : "text-purple-600"
+                                  }`}
+                                >
+                                  {item.pos}
+                                </span>
+                                {isDisabled && isOccupiedByOther && (
+                                  <div className="text-[8px] text-gray-500">
+                                    使用済
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {guideAnswers.categories[`category${category.number}`]
+                          ?.position && (
+                          <div className="mt-2 text-center">
+                            <span className="inline-block bg-purple-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                              位置{" "}
+                              {
+                                guideAnswers.categories[
+                                  `category${category.number}`
+                                ]?.position
+                              }{" "}
+                              を選択中
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1034,29 +1120,76 @@ const MandalaChart: React.FC = () => {
                 回答を保存しますか？
               </h3>
             </div>
+
+            {/* 選択中の要素一覧 */}
+            {typeof showGuidePage === "number" &&
+              (() => {
+                const selectedCategories = Object.entries(
+                  guideAnswers.categories
+                )
+                  .filter(([_, cat]) => cat.position && cat.title)
+                  .sort(
+                    ([_, a], [__, b]) => (a.position || 0) - (b.position || 0)
+                  );
+
+                if (selectedCategories.length > 0) {
+                  const positionNames = [
+                    "左上",
+                    "中上",
+                    "右上",
+                    "左中",
+                    "右中",
+                    "左下",
+                    "中下",
+                    "右下",
+                  ];
+                  return (
+                    <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-3 border-2 border-purple-200 max-w-2xl mx-auto">
+                      <p className="text-xs font-bold text-purple-700 mb-2">
+                        📋 配置される要素一覧
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                        {selectedCategories.map(([key, cat]) => (
+                          <div
+                            key={key}
+                            className="bg-white rounded px-3 py-2 text-xs flex items-center space-x-2 border border-purple-200"
+                          >
+                            <span className="bg-purple-500 text-white font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
+                              {cat.position}
+                            </span>
+                            <span className="text-gray-500 text-[10px] flex-shrink-0">
+                              {positionNames[(cat.position || 1) - 1]}:
+                            </span>
+                            <span className="text-gray-800 font-semibold truncate">
+                              {cat.title}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
             <p className="text-xs sm:text-sm text-gray-600 px-2">
               {typeof showGuidePage === "number" ? (
                 <>
                   {(() => {
-                    const currentCategory = `category${elementCategories[currentElementPage].number}`;
-                    const categoryData =
-                      guideAnswers.categories[currentCategory];
-                    const targetPosition = categoryData?.position
-                      ? categoryData.position - 1
-                      : showGuidePage;
-                    const positionNames = [
-                      "左上",
-                      "中上",
-                      "右上",
-                      "左中",
-                      "右中",
-                      "左下",
-                      "中下",
-                      "右下",
-                    ];
+                    const selectedCount = Object.values(
+                      guideAnswers.categories
+                    ).filter((cat) => cat.position && cat.title).length;
 
-                    return `この要素がマンダラチャートの${positionNames[targetPosition]}に保存されます。`;
+                    if (selectedCount === 0) {
+                      return "配置位置を選択した分野がメインチャートに保存されます。";
+                    } else if (selectedCount === 1) {
+                      return `現在1つの要素に配置位置が指定されています。保存するとメインチャートに反映されます。`;
+                    } else {
+                      return `現在${selectedCount}個の要素に配置位置が指定されています。保存するとメインチャートに反映されます。`;
+                    }
                   })()}
+                  <br className="hidden sm:inline" />
+                  <span className="sm:hidden"> </span>
                 </>
               ) : (
                 <>
