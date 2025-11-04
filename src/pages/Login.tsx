@@ -36,8 +36,8 @@ const DEMO_USERS = [
 
 const Login: React.FC = () => {
   const { user, isLoading, login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("normalUser1@example.com");
+  const [password, setPassword] = useState("normalUser1Pass");
   const [error, setError] = useState("");
 
   // すでにログイン済みの場合はリダイレクト

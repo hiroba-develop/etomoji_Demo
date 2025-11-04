@@ -115,9 +115,12 @@ const MandalaChart: React.FC = () => {
     centerFeelingAnswer: string;
     categories: {
       [key: string]: {
-        title: string;
-        answers: string[];
-        position: number | null; // 1-8の位置、nullは未選択
+        answers: string[]; // 質問の回答（分野で共有）
+        elements: Array<{
+          id: string;
+          title: string;
+          position: number | null; // 1-8の位置、nullは未選択
+        }>;
       };
     };
   }>({
@@ -214,9 +217,11 @@ const MandalaChart: React.FC = () => {
       // 位置ベースで全ての要素を配置
       const positionMap: { [key: number]: string } = {};
       Object.values(guideAnswers.categories).forEach((cat) => {
-        if (cat.position && cat.title) {
-          positionMap[cat.position] = cat.title;
-        }
+        cat.elements?.forEach((element) => {
+          if (element.position && element.title) {
+            positionMap[element.position] = element.title;
+          }
+        });
       });
 
       setMainCells((prev) =>
@@ -252,9 +257,11 @@ const MandalaChart: React.FC = () => {
     // 位置ベースで要素を配置
     const positionMap: { [key: number]: string } = {};
     Object.values(guideAnswers.categories).forEach((cat) => {
-      if (cat.position && cat.title) {
-        positionMap[cat.position] = cat.title;
-      }
+      cat.elements?.forEach((element) => {
+        if (element.position && element.title) {
+          positionMap[element.position] = element.title;
+        }
+      });
     });
 
     setMainCells((prev) =>
@@ -555,8 +562,8 @@ const MandalaChart: React.FC = () => {
               }`}
             >
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline">メインチャートに戻る</span>
-              <span className="sm:hidden">戻る</span>
+              <span className="hidden sm:inline">メインチャートへ</span>
+              <span className="sm:hidden">メインチャートへ</span>
             </button>
             <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
               目標デザインガイド
@@ -727,8 +734,8 @@ const MandalaChart: React.FC = () => {
               }`}
             >
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline">メインチャートに戻る</span>
-              <span className="sm:hidden">戻る</span>
+              <span className="hidden sm:inline">メインチャートへ</span>
+              <span className="sm:hidden">メインチャートへ</span>
             </button>
             <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
               目標デザインガイド - 要素を考える
@@ -823,9 +830,8 @@ const MandalaChart: React.FC = () => {
                       const currentCategory = guideAnswers.categories[
                         categoryKey
                       ] || {
-                        title: "",
                         answers: [],
-                        selected: false,
+                        elements: [],
                       };
 
                       return (
@@ -856,13 +862,10 @@ const MandalaChart: React.FC = () => {
                                     ...prev.categories,
                                     [categoryKey]: {
                                       ...prev.categories[categoryKey],
-                                      title:
-                                        prev.categories[categoryKey]?.title ||
-                                        "",
                                       answers: newAnswers,
-                                      position:
+                                      elements:
                                         prev.categories[categoryKey]
-                                          ?.position || null,
+                                          ?.elements || [],
                                     },
                                   },
                                 };
@@ -876,195 +879,282 @@ const MandalaChart: React.FC = () => {
                     })}
                   </div>
 
-                  {/* 最終的な要素入力と位置選択 */}
+                  {/* 要素の登録エリア */}
                   <div className="bg-white rounded-lg p-3 sm:p-4 border-2 border-purple-300">
-                    <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">
-                      <span className="bg-purple-500 text-white px-2 py-1 rounded text-xs mr-2">
-                        決定
-                      </span>
-                      <span className="text-xs sm:text-sm">
-                        この分野の要素を一言で表現してください
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      value={
-                        guideAnswers.categories[`category${category.number}`]
-                          ?.title || ""
-                      }
-                      onChange={(e) =>
-                        setGuideAnswers((prev) => {
-                          const categoryKey = `category${category.number}`;
-                          return {
-                            ...prev,
-                            categories: {
-                              ...prev.categories,
-                              [categoryKey]: {
-                                ...prev.categories[categoryKey],
-                                title: e.target.value,
-                                answers:
-                                  prev.categories[categoryKey]?.answers || [],
-                                position:
-                                  prev.categories[categoryKey]?.position ||
-                                  null,
-                              },
-                            },
-                          };
-                        })
-                      }
-                      className="w-full border-2 border-purple-400 rounded-lg p-2 sm:p-3 text-sm sm:text-base font-semibold text-gray-800 focus:border-purple-600 focus:outline-none bg-purple-50 mb-3"
-                      placeholder={category.placeholder}
-                    />
-
-                    <div className="space-y-3">
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700">
-                        マンダラチャートの配置位置を選択してください:
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-xs sm:text-sm font-bold text-gray-800">
+                        <span className="bg-purple-500 text-white px-2 py-1 rounded text-xs mr-2">
+                          決定
+                        </span>
+                        <span className="text-xs sm:text-sm">
+                          この分野の要素を登録
+                        </span>
                       </label>
-
-                      {/* 要素未入力時の注意メッセージ */}
-                      {(() => {
-                        const categoryKey = `category${category.number}`;
-                        const currentTitle =
-                          guideAnswers.categories[categoryKey]?.title || "";
-                        const isTitleEmpty = !currentTitle.trim();
-
-                        if (isTitleEmpty) {
-                          return (
-                            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-2 text-center">
-                              <p className="text-xs text-yellow-700 font-semibold">
-                                ⚠️ 要素を入力してから配置位置を選択してください
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-
-                      {/* 配置位置の選択可能な図 */}
-                      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-3 border-2 border-purple-200">
-                        <div className="grid grid-cols-3 gap-1 max-w-[240px] mx-auto">
-                          {[
-                            { pos: 1, label: "左上" },
-                            { pos: 2, label: "中上" },
-                            { pos: 3, label: "右上" },
-                            { pos: 4, label: "左中" },
-                            null, // 中央
-                            { pos: 5, label: "右中" },
-                            { pos: 6, label: "左下" },
-                            { pos: 7, label: "中下" },
-                            { pos: 8, label: "右下" },
-                          ].map((item) => {
-                            if (item === null) {
-                              // 中央（選択不可）
-                              return (
-                                <div
-                                  key="center"
-                                  className="bg-gradient-to-br from-purple-200 to-purple-300 border-2 border-purple-400 rounded p-2 text-center cursor-not-allowed"
-                                >
-                                  <span className="text-xs font-bold text-purple-800">
-                                    最終目標
-                                  </span>
-                                </div>
-                              );
-                            }
-
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGuideAnswers((prev) => {
                             const categoryKey = `category${category.number}`;
-                            const currentPosition =
-                              guideAnswers.categories[categoryKey]?.position;
-                            const isSelected = currentPosition === item.pos;
+                            const currentElements =
+                              prev.categories[categoryKey]?.elements || [];
+                            return {
+                              ...prev,
+                              categories: {
+                                ...prev.categories,
+                                [categoryKey]: {
+                                  ...prev.categories[categoryKey],
+                                  answers:
+                                    prev.categories[categoryKey]?.answers || [],
+                                  elements: [
+                                    ...currentElements,
+                                    {
+                                      id: `${categoryKey}_${Date.now()}`,
+                                      title: "",
+                                      position: null,
+                                    },
+                                  ],
+                                },
+                              },
+                            };
+                          });
+                        }}
+                        className="bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:shadow-md transition-all"
+                      >
+                        ➕ 要素を追加
+                      </button>
+                    </div>
 
-                            // 現在の分野の要素タイトルが入力されているかチェック
-                            const currentTitle =
-                              guideAnswers.categories[categoryKey]?.title || "";
-                            const isTitleEmpty = !currentTitle.trim();
+                    {/* 要素リスト */}
+                    {(() => {
+                      const categoryKey = `category${category.number}`;
+                      const currentElements =
+                        guideAnswers.categories[categoryKey]?.elements || [];
 
-                            // 他の分野で既に使用されている位置かチェック
-                            const isOccupiedByOther = Object.entries(
-                              guideAnswers.categories
-                            ).some(
-                              ([key, cat]) =>
-                                key !== categoryKey && cat.position === item.pos
-                            );
+                      if (currentElements.length === 0) {
+                        return (
+                          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                            <p className="text-sm text-gray-500">
+                              「➕
+                              要素を追加」ボタンをクリックして要素を追加してください
+                            </p>
+                          </div>
+                        );
+                      }
 
-                            const isDisabled =
-                              isOccupiedByOther ||
-                              (isTitleEmpty && !isSelected);
-
-                            return (
-                              <button
-                                key={item.pos}
-                                type="button"
-                                disabled={isDisabled}
-                                onClick={() => {
-                                  if (isDisabled) return;
-
-                                  setGuideAnswers((prev) => {
-                                    const newPosition = isSelected
-                                      ? null
-                                      : item.pos;
-
-                                    return {
-                                      ...prev,
-                                      categories: {
-                                        ...prev.categories,
-                                        [categoryKey]: {
-                                          ...prev.categories[categoryKey],
-                                          title:
-                                            prev.categories[categoryKey]
-                                              ?.title || "",
-                                          answers:
-                                            prev.categories[categoryKey]
-                                              ?.answers || [],
-                                          position: newPosition,
-                                        },
-                                      },
-                                    };
-                                  });
-                                }}
-                                className={`rounded p-2 text-center transition-all ${
-                                  isSelected
-                                    ? "bg-gradient-to-br from-purple-500 to-purple-600 border-2 border-purple-700 shadow-lg text-white"
-                                    : isDisabled
-                                    ? "bg-gray-200 border-2 border-gray-400 cursor-not-allowed opacity-50"
-                                    : "bg-white border-2 border-purple-300 hover:bg-purple-100 hover:scale-105 transform"
-                                }`}
-                              >
-                                <span
-                                  className={`text-xs font-bold ${
-                                    isSelected
-                                      ? "text-white"
-                                      : isDisabled
-                                      ? "text-gray-500"
-                                      : "text-purple-600"
-                                  }`}
-                                >
-                                  {item.pos}
+                      return (
+                        <div className="space-y-3">
+                          {currentElements.map((element, elementIndex) => (
+                            <div
+                              key={element.id}
+                              className="bg-purple-50 border-2 border-purple-200 rounded-lg p-3 space-y-3"
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="bg-purple-500 text-white px-2 py-1 rounded text-xs font-bold flex-shrink-0">
+                                  {elementIndex + 1}
                                 </span>
-                                {isDisabled && isOccupiedByOther && (
-                                  <div className="text-[8px] text-gray-500">
-                                    使用済
+                                <input
+                                  type="text"
+                                  value={element.title}
+                                  onChange={(e) =>
+                                    setGuideAnswers((prev) => {
+                                      const newElements = [
+                                        ...(prev.categories[categoryKey]
+                                          ?.elements || []),
+                                      ];
+                                      newElements[elementIndex] = {
+                                        ...newElements[elementIndex],
+                                        title: e.target.value,
+                                      };
+                                      return {
+                                        ...prev,
+                                        categories: {
+                                          ...prev.categories,
+                                          [categoryKey]: {
+                                            ...prev.categories[categoryKey],
+                                            answers:
+                                              prev.categories[categoryKey]
+                                                ?.answers || [],
+                                            elements: newElements,
+                                          },
+                                        },
+                                      };
+                                    })
+                                  }
+                                  className="flex-1 border-2 border-purple-300 rounded-lg p-2 text-sm font-semibold text-gray-800 focus:border-purple-600 focus:outline-none bg-white"
+                                  placeholder={category.placeholder}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGuideAnswers((prev) => {
+                                      const newElements = [
+                                        ...(prev.categories[categoryKey]
+                                          ?.elements || []),
+                                      ];
+                                      newElements.splice(elementIndex, 1);
+                                      return {
+                                        ...prev,
+                                        categories: {
+                                          ...prev.categories,
+                                          [categoryKey]: {
+                                            ...prev.categories[categoryKey],
+                                            answers:
+                                              prev.categories[categoryKey]
+                                                ?.answers || [],
+                                            elements: newElements,
+                                          },
+                                        },
+                                      };
+                                    });
+                                  }}
+                                  className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-red-600 transition-all flex-shrink-0"
+                                >
+                                  削除
+                                </button>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold text-gray-700">
+                                  マンダラチャートの配置位置:
+                                </label>
+
+                                {/* 要素未入力時の注意メッセージ */}
+                                {!element.title.trim() && (
+                                  <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-2 text-center">
+                                    <p className="text-xs text-yellow-700 font-semibold">
+                                      ⚠️
+                                      要素を入力してから配置位置を選択してください
+                                    </p>
                                   </div>
                                 )}
-                              </button>
-                            );
-                          })}
+
+                                {/* 配置位置の選択可能な図 */}
+                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-2 border-2 border-purple-200">
+                                  <div className="grid grid-cols-3 gap-1 max-w-[200px] mx-auto">
+                                    {[
+                                      { pos: 1, label: "左上" },
+                                      { pos: 2, label: "中上" },
+                                      { pos: 3, label: "右上" },
+                                      { pos: 4, label: "左中" },
+                                      null, // 中央
+                                      { pos: 5, label: "右中" },
+                                      { pos: 6, label: "左下" },
+                                      { pos: 7, label: "中下" },
+                                      { pos: 8, label: "右下" },
+                                    ].map((item) => {
+                                      if (item === null) {
+                                        // 中央（選択不可）
+                                        return (
+                                          <div
+                                            key="center"
+                                            className="bg-gradient-to-br from-purple-200 to-purple-300 border-2 border-purple-400 rounded p-1.5 text-center cursor-not-allowed"
+                                          >
+                                            <span className="text-[10px] font-bold text-purple-800">
+                                              目標
+                                            </span>
+                                          </div>
+                                        );
+                                      }
+
+                                      const isSelected =
+                                        element.position === item.pos;
+                                      const isTitleEmpty =
+                                        !element.title.trim();
+
+                                      // 他の要素で既に使用されている位置かチェック
+                                      const isOccupiedByOther = Object.values(
+                                        guideAnswers.categories
+                                      ).some((cat) =>
+                                        cat.elements?.some(
+                                          (el) =>
+                                            el.id !== element.id &&
+                                            el.position === item.pos
+                                        )
+                                      );
+
+                                      const isDisabled =
+                                        isOccupiedByOther ||
+                                        (isTitleEmpty && !isSelected);
+
+                                      return (
+                                        <button
+                                          key={item.pos}
+                                          type="button"
+                                          disabled={isDisabled}
+                                          onClick={() => {
+                                            if (isDisabled) return;
+
+                                            setGuideAnswers((prev) => {
+                                              const newElements = [
+                                                ...(prev.categories[categoryKey]
+                                                  ?.elements || []),
+                                              ];
+                                              newElements[elementIndex] = {
+                                                ...newElements[elementIndex],
+                                                position: isSelected
+                                                  ? null
+                                                  : item.pos,
+                                              };
+                                              return {
+                                                ...prev,
+                                                categories: {
+                                                  ...prev.categories,
+                                                  [categoryKey]: {
+                                                    ...prev.categories[
+                                                      categoryKey
+                                                    ],
+                                                    answers:
+                                                      prev.categories[
+                                                        categoryKey
+                                                      ]?.answers || [],
+                                                    elements: newElements,
+                                                  },
+                                                },
+                                              };
+                                            });
+                                          }}
+                                          className={`rounded p-1.5 text-center transition-all ${
+                                            isSelected
+                                              ? "bg-gradient-to-br from-purple-500 to-purple-600 border-2 border-purple-700 shadow-lg text-white"
+                                              : isDisabled
+                                              ? "bg-gray-200 border-2 border-gray-400 cursor-not-allowed opacity-50"
+                                              : "bg-white border-2 border-purple-300 hover:bg-purple-100 hover:scale-105 transform"
+                                          }`}
+                                        >
+                                          <span
+                                            className={`text-xs font-bold ${
+                                              isSelected
+                                                ? "text-white"
+                                                : isDisabled
+                                                ? "text-gray-500"
+                                                : "text-purple-600"
+                                            }`}
+                                          >
+                                            {item.pos}
+                                          </span>
+                                          {isDisabled && isOccupiedByOther && (
+                                            <div className="text-[8px] text-gray-500">
+                                              済
+                                            </div>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {element.position && (
+                                    <div className="mt-1.5 text-center">
+                                      <span className="inline-block bg-purple-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                                        位置 {element.position} を選択中
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        {guideAnswers.categories[`category${category.number}`]
-                          ?.position && (
-                          <div className="mt-2 text-center">
-                            <span className="inline-block bg-purple-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                              位置{" "}
-                              {
-                                guideAnswers.categories[
-                                  `category${category.number}`
-                                ]?.position
-                              }{" "}
-                              を選択中
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
@@ -1124,15 +1214,25 @@ const MandalaChart: React.FC = () => {
             {/* 選択中の要素一覧 */}
             {typeof showGuidePage === "number" &&
               (() => {
-                const selectedCategories = Object.entries(
-                  guideAnswers.categories
-                )
-                  .filter(([_, cat]) => cat.position && cat.title)
-                  .sort(
-                    ([_, a], [__, b]) => (a.position || 0) - (b.position || 0)
-                  );
+                const selectedElements: Array<{
+                  position: number;
+                  title: string;
+                }> = [];
 
-                if (selectedCategories.length > 0) {
+                Object.values(guideAnswers.categories).forEach((cat) => {
+                  cat.elements?.forEach((element) => {
+                    if (element.position && element.title) {
+                      selectedElements.push({
+                        position: element.position,
+                        title: element.title,
+                      });
+                    }
+                  });
+                });
+
+                selectedElements.sort((a, b) => a.position - b.position);
+
+                if (selectedElements.length > 0) {
                   const positionNames = [
                     "左上",
                     "中上",
@@ -1149,19 +1249,19 @@ const MandalaChart: React.FC = () => {
                         📋 配置される要素一覧
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
-                        {selectedCategories.map(([key, cat]) => (
+                        {selectedElements.map((element, index) => (
                           <div
-                            key={key}
+                            key={index}
                             className="bg-white rounded px-3 py-2 text-xs flex items-center space-x-2 border border-purple-200"
                           >
                             <span className="bg-purple-500 text-white font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
-                              {cat.position}
+                              {element.position}
                             </span>
                             <span className="text-gray-500 text-[10px] flex-shrink-0">
-                              {positionNames[(cat.position || 1) - 1]}:
+                              {positionNames[element.position - 1]}:
                             </span>
                             <span className="text-gray-800 font-semibold truncate">
-                              {cat.title}
+                              {element.title}
                             </span>
                           </div>
                         ))}
@@ -1176,12 +1276,17 @@ const MandalaChart: React.FC = () => {
               {typeof showGuidePage === "number" ? (
                 <>
                   {(() => {
-                    const selectedCount = Object.values(
-                      guideAnswers.categories
-                    ).filter((cat) => cat.position && cat.title).length;
+                    let selectedCount = 0;
+                    Object.values(guideAnswers.categories).forEach((cat) => {
+                      cat.elements?.forEach((element) => {
+                        if (element.position && element.title) {
+                          selectedCount++;
+                        }
+                      });
+                    });
 
                     if (selectedCount === 0) {
-                      return "配置位置を選択した分野がメインチャートに保存されます。";
+                      return "配置位置を選択した要素がメインチャートに保存されます。";
                     } else if (selectedCount === 1) {
                       return `現在1つの要素に配置位置が指定されています。保存するとメインチャートに反映されます。`;
                     } else {
@@ -1193,7 +1298,7 @@ const MandalaChart: React.FC = () => {
                 </>
               ) : (
                 <>
-                  保存すると、中央の最終目標・想いと、位置を選択した分野の要素がメインチャートに反映されます。
+                  保存すると、中央の最終目標・想いと、位置を選択した要素がメインチャートに反映されます。
                   <br className="hidden sm:inline" />
                   <span className="sm:hidden"> </span>
                   13の分野から、あなたの目標に関連する要素を最大8つ選び、配置位置を指定してください。
@@ -1293,24 +1398,16 @@ const MandalaChart: React.FC = () => {
                     <div className="mb-3 text-white text-sm text-center font-bold">
                       ✨ 最終目標 ✨
                     </div>
-                    {/* 中央目標 */}
-                    <textarea
-                      value={centerGoal}
-                      onChange={(e) => setCenterGoal(e.target.value)}
-                      className="w-full min-h-[80px] max-h-40 bg-white border-2 border-white p-3 text-center font-bold text-lg text-gray-800 resize-none focus:ring-4 focus:ring-yellow-400 focus:outline-none overflow-y-auto"
-                      placeholder="必ず成し遂げたい目標"
-                      rows={2}
-                      style={{
-                        height: "auto",
-                        minHeight: "80px",
-                      }}
-                      onInput={(e) => {
-                        const target = e.target as HTMLTextAreaElement;
-                        target.style.height = "auto";
-                        target.style.height =
-                          Math.min(target.scrollHeight, 160) + "px";
-                      }}
-                    />
+                    {/* 中央目標（読み取り専用） */}
+                    <div className="w-full min-h-[80px] max-h-40 bg-white border-2 border-white p-3 text-center font-bold text-lg text-gray-800 overflow-y-auto flex items-center justify-center">
+                      {centerGoal ? (
+                        <p className="whitespace-pre-wrap">{centerGoal}</p>
+                      ) : (
+                        <p className="text-gray-400">
+                          📝 目標を考えるボタンから設定
+                        </p>
+                      )}
+                    </div>
 
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -1462,7 +1559,7 @@ const MandalaChart: React.FC = () => {
               className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span>メインチャートに戻る</span>
+              <span>メインチャートへ</span>
             </button>
             <div className="flex items-center space-x-4">
               <div className="bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] rounded-full px-6 py-3 shadow-lg">
@@ -1661,7 +1758,7 @@ const MandalaChart: React.FC = () => {
                 <p className="font-bold text-gray-800">つらくなったら...</p>
               </div>
               <p className="text-sm text-gray-600">
-                メインチャートに戻って「なぜ？」の欄を読み返しましょう。
+                最終目標を掲げた理由を読み返しましょう。
                 <br />
                 あなたが目標を立てた時の想いが、きっと力をくれます。
               </p>
@@ -1673,7 +1770,7 @@ const MandalaChart: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background">
       {showGuidePage === "center"
         ? renderCenterGuidePage()
         : showGuidePage !== null
