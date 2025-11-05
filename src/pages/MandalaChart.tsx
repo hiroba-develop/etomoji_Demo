@@ -690,6 +690,8 @@ const MandalaChart: React.FC = () => {
             </div>
             <p className="text-xs sm:text-sm text-gray-600 px-2">
               保存すると、最終目標と想いがメインチャートの中央に反映されます。
+              <br />
+              最終目標未入力の場合はメインチャートに遷移しません。
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <button
