@@ -13,6 +13,7 @@ import {
   Users,
   Briefcase,
   ChartBar,
+  Brain,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import headerIcon from "../../public/header_icon.png";
@@ -88,6 +89,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       name: "マンダラチャート",
       href: "/mandalaChart",
       icon: ChartBar,
+      disabled: false,
+      roleRequired: ["0", "1", "2"],
+    },
+    {
+      name: "起業動機診断",
+      href: "/swipeChoiceComponent",
+      icon: Brain,
       disabled: false,
       roleRequired: ["0", "1", "2"],
     },

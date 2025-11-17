@@ -7,6 +7,7 @@ import {
   Lightbulb,
   Award,
 } from "lucide-react";
+import SwipeChoiceComponent from "./SwipeChoiceComponent";
 
 interface MandalaCell {
   id: string;
@@ -24,8 +25,15 @@ interface MandalaSubChart {
 
 const MandalaChart: React.FC = () => {
   // メインの9マス（中央 + 周囲8マス）
-  const [centerGoal, setCenterGoal] = useState("");
-  const [centerFeeling, setCenterFeeling] = useState(""); // 中央の目標に込めた想い
+  // 中央目標をlocalStorageから読み込み
+  const [centerGoal, setCenterGoal] = useState(() => {
+    const saved = localStorage.getItem("mandala_center_goal");
+    return saved || "";
+  });
+  const [centerFeeling, setCenterFeeling] = useState(() => {
+    const saved = localStorage.getItem("mandala_center_feeling");
+    return saved || "";
+  }); // 中央の目標に込めた想い
   const [mainCells, setMainCells] = useState<MandalaCell[]>([
     {
       id: "m1",
@@ -101,12 +109,34 @@ const MandalaChart: React.FC = () => {
   // STEP2の現在のページ（0-12の13ページ）
   const [currentElementPage, setCurrentElementPage] = useState(0);
 
-  // 初回表示時、最終目標が未設定なら目標デザインガイドを開く
+  // 診断完了後にマンダラチャートに遷移する（診断は毎回スキップせず、centerGoalが未設定なら表示）
+  const [shouldShowDiagnosis, setShouldShowDiagnosis] = useState(!centerGoal);
+
+  // 診断完了ハンドラー
+  const handleDiagnosisComplete = () => {
+    setShouldShowDiagnosis(false);
+  };
+
+  // 中央目標が設定されたらlocalStorageに保存
   useEffect(() => {
-    if (!centerGoal) {
+    if (centerGoal) {
+      localStorage.setItem("mandala_center_goal", centerGoal);
+    }
+  }, [centerGoal]);
+
+  // 中央の想いが設定されたらlocalStorageに保存
+  useEffect(() => {
+    if (centerFeeling) {
+      localStorage.setItem("mandala_center_feeling", centerFeeling);
+    }
+  }, [centerFeeling]);
+
+  // 診断完了後、最終目標が未設定なら目標デザインガイドを開く
+  useEffect(() => {
+    if (!shouldShowDiagnosis && !centerGoal) {
       setShowGuidePage("center");
     }
-  }, []); // 初回マウント時のみ実行
+  }, [shouldShowDiagnosis, centerGoal]);
 
   // ガイドページでの回答を一時保存（分野数は可変、最終的に8つ選択）
   const [guideAnswers, setGuideAnswers] = useState<{
@@ -1348,80 +1378,82 @@ const MandalaChart: React.FC = () => {
     ];
 
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-4">
+        {/* ヘッダー部分 - レスポンシブ対応 */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-text">
             マンダラチャート
           </h1>
-          <div className="flex items-center space-x-4">
-            <div className="inline-block bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] rounded-full px-6 py-2 shadow-lg ml-auto">
-              <div className="flex items-center space-x-3 text-white">
-                <TrendingUp className="h-5 w-5" />
-                <span className="font-semibold">全体達成度</span>
-                <span className="text-2xl font-bold">
+
+          {/* 達成度と保存ボタンを縦並び（スマホ）、横並び（PC） */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+            {/* 全体達成度 */}
+            <div className="bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] rounded-full px-4 sm:px-6 py-2 shadow-lg">
+              <div className="flex items-center justify-center sm:justify-start space-x-2 sm:space-x-3 text-white">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="font-semibold text-sm sm:text-base">
+                  全体達成度
+                </span>
+                <span className="text-xl sm:text-2xl font-bold">
                   {calculateOverallProgress()}%
                 </span>
                 {calculateOverallProgress() >= 80 && (
-                  <Award className="h-6 w-6 text-yellow-300 animate-bounce" />
+                  <Award className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-300 animate-bounce" />
                 )}
               </div>
             </div>
 
             {/* 保存ボタン */}
-            <div className="max-w-5xl ml-auto">
-              <div className="mt-4 text-right">
-                <button
-                  onClick={() => {
-                    alert(
-                      "保存しました！この調子で頑張りましょう！（デモモード）"
-                    );
-                  }}
-                  className="btn-primary flex items-center space-x-2 text-sm px-4 py-2 ml-auto"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>変更を保存</span>
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={() => {
+                alert("保存しました！この調子で頑張りましょう！（デモモード）");
+              }}
+              className="btn-primary flex items-center justify-center space-x-2 text-sm sm:text-base px-4 py-2"
+            >
+              <Save className="h-4 w-4" />
+              <span>変更を保存</span>
+            </button>
           </div>
         </div>
 
         {/* 3x3グリッド - マンダラチャートスタイル */}
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-3 gap-0 border-4 border-gray-400 bg-white shadow-2xl rounded-xl">
+        <div className="w-full max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 gap-0 border-2 sm:border-4 border-gray-400 bg-white shadow-2xl rounded-lg sm:rounded-xl">
             {positions.map(({ idx }) => {
               // 中央のセル
               if (idx === -1) {
                 return (
                   <div
                     key="center"
-                    className="aspect-square bg-gradient-to-br from-[#4cb5a9] to-[#4cb5a9] p-6 flex flex-col items-center justify-center transition-all duration-300 border-2 border-gray-800 group relative"
+                    className="aspect-square bg-gradient-to-br from-[#4cb5a9] to-[#4cb5a9] p-2 sm:p-4 md:p-6 flex flex-col items-center justify-center transition-all duration-300 border border-gray-800 sm:border-2 group relative"
                   >
-                    <div className="mb-3 text-white text-sm text-center font-bold">
+                    <div className="mb-1 sm:mb-2 md:mb-3 text-white text-xs sm:text-sm text-center font-bold">
                       ✨ 最終目標 ✨
                     </div>
                     {/* 中央目標（読み取り専用） */}
-                    <div className="w-full min-h-[80px] max-h-40 bg-white border-2 border-white p-3 text-center font-bold text-lg text-gray-800 overflow-y-auto flex items-center justify-center">
+                    <div className="w-full min-h-[60px] sm:min-h-[80px] max-h-32 sm:max-h-40 bg-white border border-white sm:border-2 p-2 sm:p-3 text-center font-bold text-sm sm:text-base md:text-lg text-gray-800 overflow-y-auto flex items-center justify-center">
                       {centerGoal ? (
-                        <p className="whitespace-pre-wrap">{centerGoal}</p>
+                        <p className="whitespace-pre-wrap text-xs sm:text-sm md:text-base">
+                          {centerGoal}
+                        </p>
                       ) : (
-                        <p className="text-gray-400">
+                        <p className="text-gray-400 text-xs sm:text-sm">
                           📝 目標を考えるボタンから設定
                         </p>
                       )}
                     </div>
 
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2 flex space-x-1 sm:space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={handleShowCenterGuide}
-                        className="text-center text-xs font-medium bg-purple-500 text-white rounded px-3 py-1 hover:bg-purple-600 shadow-md whitespace-nowrap"
+                        className="text-center text-[10px] sm:text-xs font-medium bg-purple-500 text-white rounded px-2 sm:px-3 py-0.5 sm:py-1 hover:bg-purple-600 shadow-md whitespace-nowrap"
                       >
                         📝 目標を考える
                       </button>
                     </div>
 
-                    {/* なぜこの目標を掲げたのか - ホバー時に吹き出しとして表示 */}
-                    <div className="absolute left-full ml-6 top-1/2 -translate-y-1/2 w-96 bg-gradient-to-br from-white to-blue-50 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.25)] p-6 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 border-4 border-[#4cb5a9] animate-in">
+                    {/* なぜこの目標を掲げたのか - ホバー時に吹き出しとして表示（PC のみ） */}
+                    <div className="hidden md:block absolute left-full ml-6 top-1/2 -translate-y-1/2 w-96 bg-gradient-to-br from-white to-blue-50 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.25)] p-6 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 border-4 border-[#4cb5a9] animate-in">
                       {/* 吹き出しの三角形 - より大きく目立つように */}
                       <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[20px] border-t-transparent border-b-[20px] border-b-transparent border-r-[24px] border-r-[#4cb5a9] drop-shadow-lg"></div>
                       <div className="absolute right-full top-1/2 -translate-y-1/2 ml-1 w-0 h-0 border-t-[16px] border-t-transparent border-b-[16px] border-b-transparent border-r-[20px] border-r-white"></div>
@@ -1463,23 +1495,23 @@ const MandalaChart: React.FC = () => {
               const cell = mainCells[idx];
               const cornerClass =
                 idx === 0
-                  ? "rounded-tl-lg" // 左上
+                  ? "rounded-tl-md sm:rounded-tl-lg" // 左上
                   : idx === 2
-                  ? "rounded-tr-lg" // 右上
+                  ? "rounded-tr-md sm:rounded-tr-lg" // 右上
                   : idx === 5
-                  ? "rounded-bl-lg" // 左下
+                  ? "rounded-bl-md sm:rounded-bl-lg" // 左下
                   : idx === 7
-                  ? "rounded-br-lg" // 右下
+                  ? "rounded-br-md sm:rounded-br-lg" // 右下
                   : "";
               return (
                 <div
                   key={cell.id}
-                  className={`aspect-square bg-[#f8fffe] p-4 transform hover:bg-[#e8f7f5] transition-all duration-200 group border border-gray-800 flex flex-col relative ${cornerClass}`}
+                  className={`aspect-square bg-[#f8fffe] p-1 sm:p-2 md:p-4 transform hover:bg-[#e8f7f5] transition-all duration-200 group border border-gray-800 flex flex-col relative ${cornerClass}`}
                 >
                   {/* 達成度表示 */}
-                  <div className="absolute top-2 right-2">
-                    <div className="bg-white rounded-full px-2 py-1 shadow-sm border border-gray-300">
-                      <span className="text-xs font-bold text-gray-700">
+                  <div className="absolute top-0.5 sm:top-1 md:top-2 right-0.5 sm:right-1 md:right-2 z-10">
+                    <div className="bg-white rounded-full px-1 sm:px-1.5 md:px-2 py-0.5 sm:py-1 shadow-sm border border-gray-300">
+                      <span className="text-[10px] sm:text-xs font-bold text-gray-700">
                         {cell.achievement}%
                       </span>
                     </div>
@@ -1491,36 +1523,43 @@ const MandalaChart: React.FC = () => {
                       onChange={(e) =>
                         updateMainCell(cell.id, "title", e.target.value)
                       }
-                      className="w-full bg-gray-50 border-2 border-gray-300 px-3 py-2 text-center font-semibold text-gray-800 text-sm min-h-[40px] max-h-32 focus:bg-white focus:border-[#4cb5a9] focus:outline-none resize-none overflow-y-auto"
+                      className="w-full bg-gray-50 border border-gray-300 sm:border-2 px-1 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 text-center font-semibold text-gray-800 text-[10px] sm:text-xs md:text-sm min-h-[30px] sm:min-h-[40px] max-h-24 sm:max-h-32 focus:bg-white focus:border-[#4cb5a9] focus:outline-none resize-none overflow-y-auto"
                       placeholder="要素を入力"
                       rows={1}
                       style={{
                         height: "auto",
-                        minHeight: "40px",
+                        minHeight: "30px",
                       }}
                       onInput={(e) => {
                         const target = e.target as HTMLTextAreaElement;
                         target.style.height = "auto";
                         target.style.height =
-                          Math.min(target.scrollHeight, 128) + "px";
+                          Math.min(
+                            target.scrollHeight,
+                            window.innerWidth < 640 ? 96 : 128
+                          ) + "px";
                       }}
                     />
                   </div>
 
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute bottom-0.5 sm:bottom-1 md:bottom-2 left-1/2 -translate-x-1/2 flex flex-col sm:flex-row gap-0.5 sm:gap-1 md:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() =>
                         handleShowElementGuide(idx < 4 ? idx : idx - 1)
                       }
-                      className="text-center text-xs font-medium bg-purple-500 text-white rounded px-3 py-1 hover:bg-purple-600 shadow-md whitespace-nowrap"
+                      className="text-center text-[8px] sm:text-[10px] md:text-xs font-medium bg-purple-500 text-white rounded px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 hover:bg-purple-600 shadow-md whitespace-nowrap"
                     >
-                      📝 要素を考える
+                      <span className="hidden sm:inline">📝 要素を考える</span>
+                      <span className="sm:hidden">📝</span>
                     </button>
                     <button
                       onClick={() => handleMainCellClick(cell.id)}
-                      className="text-center text-xs font-medium bg-[#4cb5a9] text-white rounded px-3 py-1 hover:bg-[#3a9b8f] shadow-md whitespace-nowrap"
+                      className="text-center text-[8px] sm:text-[10px] md:text-xs font-medium bg-[#4cb5a9] text-white rounded px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 hover:bg-[#3a9b8f] shadow-md whitespace-nowrap"
                     >
-                      💡 詳細チャートへ
+                      <span className="hidden sm:inline">
+                        💡 詳細チャートへ
+                      </span>
+                      <span className="sm:hidden">💡</span>
                     </button>
                   </div>
                 </div>
@@ -1552,53 +1591,51 @@ const MandalaChart: React.FC = () => {
     ];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-4">
         {/* ヘッダー */}
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 border border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <button
               onClick={handleBackToMain}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105"
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105 text-sm sm:text-base"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               <span>メインチャートへ</span>
             </button>
-            <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] rounded-full px-6 py-3 shadow-lg">
-                <div className="flex items-center space-x-3 text-white">
-                  <TrendingUp className="h-5 w-5" />
-                  <span className="font-semibold">達成度</span>
-                  <span className="text-2xl font-bold">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+              <div className="bg-gradient-to-r from-[#67BACA] to-[#5AA8B8] rounded-full px-4 sm:px-6 py-2 sm:py-3 shadow-lg">
+                <div className="flex items-center justify-center space-x-2 sm:space-x-3 text-white">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="font-semibold text-sm sm:text-base">
+                    達成度
+                  </span>
+                  <span className="text-xl sm:text-2xl font-bold">
                     {calculateSubProgress(cellId)}%
                   </span>
                   {calculateSubProgress(cellId) >= 80 && (
-                    <Award className="h-6 w-6 text-yellow-300 animate-bounce" />
+                    <Award className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-300 animate-bounce" />
                   )}
                 </div>
               </div>
-              <div className="max-w-5xl ml-auto">
-                <div className="mt-4 text-right">
-                  <button
-                    onClick={() => {
-                      alert(
-                        "保存しました！この調子で頑張りましょう！（デモモード）"
-                      );
-                    }}
-                    className="btn-primary flex items-center space-x-2 text-sm px-4 py-2 ml-auto"
-                  >
-                    <Save className="h-4 w-4" />
-                    <span>変更を保存</span>
-                  </button>
-                </div>
-              </div>
+              <button
+                onClick={() => {
+                  alert(
+                    "保存しました！この調子で頑張りましょう！（デモモード）"
+                  );
+                }}
+                className="btn-primary flex items-center justify-center space-x-2 text-sm sm:text-base px-4 py-2"
+              >
+                <Save className="h-4 w-4" />
+                <span>変更を保存</span>
+              </button>
             </div>
           </div>
 
           {/* 励ましメッセージ */}
-          <div className="mt-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-3 border border-blue-100">
+          <div className="mt-3 sm:mt-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-2 sm:p-3 border border-blue-100">
             <div className="flex items-center justify-center space-x-2">
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
-              <p className="text-sm font-medium text-gray-700">
+              <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />
+              <p className="text-xs sm:text-sm font-medium text-gray-700">
                 「{mainCell.title}
                 」を達成することで、理想の自分に近づいていきます！
               </p>
@@ -1607,8 +1644,8 @@ const MandalaChart: React.FC = () => {
         </div>
 
         {/* 3x3グリッド - サブチャート */}
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-3 gap-0 border-4 border-gray-400 bg-white shadow-2xl rounded-xl">
+        <div className="w-full max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 gap-0 border-2 sm:border-4 border-gray-400 bg-white shadow-2xl rounded-lg sm:rounded-xl">
             {positions.map(({ idx }) => {
               // 中央のセル（親目標）
               if (idx === -1) {
@@ -1617,13 +1654,12 @@ const MandalaChart: React.FC = () => {
                     key="center"
                     className={`aspect-square bg-gradient-to-br ${getAchievementColor(
                       mainCell.achievement
-                    )} p-6 flex flex-col items-center justify-center border-2 border-gray-800`}
+                    )} p-2 sm:p-4 md:p-6 flex flex-col items-center justify-center border border-gray-800 sm:border-2`}
                   >
-                    {/* <Target className="h-10 w-10 text-white mb-3" /> */}
-                    <div className="text-white text-center font-bold text-xl mb-2">
+                    <div className="text-white text-center font-bold text-xs sm:text-base md:text-xl mb-1 sm:mb-2 px-1">
                       {mainCell.title}
                     </div>
-                    <div className="text-white/90 text-3xl font-bold">
+                    <div className="text-white/90 text-xl sm:text-2xl md:text-3xl font-bold">
                       {mainCell.achievement}%
                     </div>
                   </div>
@@ -1633,22 +1669,22 @@ const MandalaChart: React.FC = () => {
               const subCell = subChart.cells[idx];
               const cornerClass =
                 idx === 0
-                  ? "rounded-tl-lg" // 左上
+                  ? "rounded-tl-md sm:rounded-tl-lg" // 左上
                   : idx === 2
-                  ? "rounded-tr-lg" // 右上
+                  ? "rounded-tr-md sm:rounded-tr-lg" // 右上
                   : idx === 5
-                  ? "rounded-bl-lg" // 左下
+                  ? "rounded-bl-md sm:rounded-bl-lg" // 左下
                   : idx === 7
-                  ? "rounded-br-lg" // 右下
+                  ? "rounded-br-md sm:rounded-br-lg" // 右下
                   : "";
               return (
                 <div
                   key={subCell.id}
                   className={`aspect-square bg-gradient-to-br ${getAchievementColor(
                     subCell.achievement
-                  )} p-4 transition-all duration-200 border border-gray-800 ${cornerClass}`}
+                  )} p-1 sm:p-2 md:p-4 transition-all duration-200 border border-gray-800 ${cornerClass}`}
                 >
-                  <div className="h-full flex flex-col justify-between space-y-2">
+                  <div className="h-full flex flex-col justify-between space-y-0.5 sm:space-y-1 md:space-y-2">
                     {/* タイトル入力 */}
                     <textarea
                       value={subCell.title}
@@ -1660,35 +1696,38 @@ const MandalaChart: React.FC = () => {
                           e.target.value
                         )
                       }
-                      className="w-full min-h-[36px] max-h-24 bg-white border-2 border-white px-2 py-1.5 font-semibold text-sm text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-white focus:outline-none resize-none overflow-y-auto"
+                      className="w-full min-h-[24px] sm:min-h-[36px] max-h-16 sm:max-h-24 bg-white border border-white sm:border-2 px-1 sm:px-2 py-0.5 sm:py-1 md:py-1.5 font-semibold text-[10px] sm:text-xs md:text-sm text-gray-800 placeholder-gray-400 focus:ring-1 sm:focus:ring-2 focus:ring-white focus:outline-none resize-none overflow-y-auto"
                       placeholder="具体的な行動"
                       rows={1}
                       style={{
                         height: "auto",
-                        minHeight: "36px",
+                        minHeight: "24px",
                       }}
                       onInput={(e) => {
                         const target = e.target as HTMLTextAreaElement;
                         target.style.height = "auto";
                         target.style.height =
-                          Math.min(target.scrollHeight, 96) + "px";
+                          Math.min(
+                            target.scrollHeight,
+                            window.innerWidth < 640 ? 64 : 96
+                          ) + "px";
                       }}
                     />
 
                     {/* 達成度スライダー */}
-                    <div className="space-y-1">
+                    <div className="space-y-0.5 sm:space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-white text-xs font-bold">
+                        <span className="text-white text-[9px] sm:text-xs font-bold">
                           達成度
                         </span>
-                        <span className="text-white font-bold text-sm bg-white/20 px-2 py-0.5 rounded">
+                        <span className="text-white font-bold text-[10px] sm:text-sm bg-white/20 px-1 sm:px-2 py-0.5 rounded">
                           {subCell.achievement}%
                         </span>
                       </div>
                       {/* プログレスバーとスライダーを重ねる */}
                       <div className="relative">
                         {/* プログレスバー */}
-                        <div className="w-full bg-white/30 h-3 border border-white/50">
+                        <div className="w-full bg-white/30 h-2 sm:h-3 border border-white/50">
                           <div
                             className={`h-full transition-all duration-300 ${getMeterColor(
                               subCell.achievement
@@ -1711,7 +1750,7 @@ const MandalaChart: React.FC = () => {
                               Number(e.target.value)
                             )
                           }
-                          className="absolute top-0 left-0 w-full h-3 appearance-none bg-transparent cursor-pointer"
+                          className="absolute top-0 left-0 w-full h-2 sm:h-3 appearance-none bg-transparent cursor-pointer"
                           style={{
                             WebkitAppearance: "none",
                           }}
@@ -1730,18 +1769,21 @@ const MandalaChart: React.FC = () => {
                           e.target.value
                         )
                       }
-                      className="w-full min-h-[48px] max-h-32 bg-white border-2 border-white px-2 py-1.5 text-xs text-gray-800 placeholder-gray-400 resize-none focus:ring-2 focus:ring-white focus:outline-none overflow-y-auto"
+                      className="w-full min-h-[32px] sm:min-h-[48px] max-h-24 sm:max-h-32 bg-white border border-white sm:border-2 px-1 sm:px-2 py-0.5 sm:py-1 md:py-1.5 text-[9px] sm:text-xs text-gray-800 placeholder-gray-400 resize-none focus:ring-1 sm:focus:ring-2 focus:ring-white focus:outline-none overflow-y-auto"
                       rows={2}
                       placeholder="進捗メモ"
                       style={{
                         height: "auto",
-                        minHeight: "48px",
+                        minHeight: "32px",
                       }}
                       onInput={(e) => {
                         const target = e.target as HTMLTextAreaElement;
                         target.style.height = "auto";
                         target.style.height =
-                          Math.min(target.scrollHeight, 128) + "px";
+                          Math.min(
+                            target.scrollHeight,
+                            window.innerWidth < 640 ? 96 : 128
+                          ) + "px";
                       }}
                     />
                   </div>
@@ -1751,15 +1793,17 @@ const MandalaChart: React.FC = () => {
           </div>
         </div>
 
-        {/* 保存ボタン */}
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <div className="text-center space-y-4">
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+        {/* メッセージエリア */}
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200">
+          <div className="text-center space-y-3 sm:space-y-4">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-3 sm:p-4 border border-blue-200">
               <div className="flex items-center justify-center space-x-2 mb-2">
-                <Lightbulb className="h-5 w-5 text-yellow-500" />
-                <p className="font-bold text-gray-800">つらくなったら...</p>
+                <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                <p className="font-bold text-sm sm:text-base text-gray-800">
+                  つらくなったら...
+                </p>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600">
                 最終目標を掲げた理由を読み返しましょう。
                 <br />
                 あなたが目標を立てた時の想いが、きっと力をくれます。
@@ -1770,6 +1814,11 @@ const MandalaChart: React.FC = () => {
       </div>
     );
   };
+
+  // 中央目標が未設定で、診断画面を表示すべき場合は診断画面を表示
+  if (shouldShowDiagnosis) {
+    return <SwipeChoiceComponent onComplete={handleDiagnosisComplete} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
