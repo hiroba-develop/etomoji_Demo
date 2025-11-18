@@ -51,9 +51,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const clientNavigation = [
     {
-      name: "ダッシュボード",
-      href: "/",
-      icon: Home,
+      name: "マンダラチャート",
+      href: "/mandalaChart",
+      icon: ChartBar,
+      disabled: false,
+      roleRequired: ["0", "1", "2"],
+    },
+    {
+      name: "シミュレーション",
+      href: "/simulation",
+      icon: Brain,
       disabled: false,
       roleRequired: ["0", "1", "2"],
     },
@@ -71,27 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       disabled: false,
       roleRequired: ["0", "1", "2"],
     },
-    {
-      name: "ランキング・表彰",
-      href: "/ranking",
-      icon: Trophy,
-      disabled: true,
-      roleRequired: ["0", "1", "2"],
-    },
-    {
-      name: "相談・サポート",
-      href: "/support",
-      icon: MessageCircle,
-      disabled: true,
-      roleRequired: ["0", "1", "2"],
-    },
-    {
-      name: "マンダラチャート",
-      href: "/mandalaChart",
-      icon: ChartBar,
-      disabled: false,
-      roleRequired: ["0", "1", "2"],
-    },
+
     {
       name: "起業動機診断",
       href: "/swipeChoiceComponent",

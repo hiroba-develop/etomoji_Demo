@@ -224,11 +224,57 @@ const analyzeResults = (results: Result[]) => {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3);
 
+  // 起業動機タイプの判定
+  const motivationType = determineMotivationType(categoryCount);
+
   return {
     sortedCategories,
     totalChoices,
     skippedCount: results.length - totalChoices,
+    motivationType,
   };
+};
+
+// 起業動機タイプ判定関数
+const determineMotivationType = (
+  categoryCount: Record<string, number>
+): string => {
+  // 各タイプに属するカテゴリとそのスコア
+  const stableScore =
+    (categoryCount["stability"] || 0) * 2 +
+    (categoryCount["money"] || 0) * 1.5 +
+    (categoryCount["family"] || 0) * 1.5 +
+    (categoryCount["freedom"] || 0) * 1;
+
+  const growthScore =
+    (categoryCount["achievement"] || 0) * 2 +
+    (categoryCount["growth"] || 0) * 2 +
+    (categoryCount["excitement"] || 0) * 1.5 +
+    (categoryCount["competition"] || 0) * 1.5 +
+    (categoryCount["innovation"] || 0) * 1 +
+    (categoryCount["power"] || 0) * 1;
+
+  const impactScore =
+    (categoryCount["impact"] || 0) * 2 +
+    (categoryCount["helping"] || 0) * 2 +
+    (categoryCount["purpose"] || 0) * 1.5 +
+    (categoryCount["collaboration"] || 0) * 1.5 +
+    (categoryCount["team"] || 0) * 1;
+
+  // 最も高いスコアのタイプを返す
+  const maxScore = Math.max(stableScore, growthScore, impactScore);
+
+  if (maxScore === 0) {
+    return "成長チャレンジ型"; // デフォルト
+  }
+
+  if (stableScore === maxScore) {
+    return "安定コツコツ型";
+  } else if (growthScore === maxScore) {
+    return "成長チャレンジ型";
+  } else {
+    return "価値・貢献重視型";
+  }
 };
 
 /* ========= 結果画面コンポーネント ========= */
@@ -255,6 +301,16 @@ const ResultScreen: React.FC<{
                 `（${analysis.skippedCount}問スキップ）`}
             </p>
           </div>
+
+          {/* 起業動機診断タイプの表示 */}
+          {analysis.sortedCategories.length > 0 && (
+            <div className="bg-gradient-to-r from-teal-500 to-cyan-500 rounded-xl p-4 text-center shadow-lg">
+              <p className="text-white text-sm mb-1">あなたのタイプは</p>
+              <p className="text-white text-xl sm:text-2xl font-bold">
+                {analysis.motivationType}
+              </p>
+            </div>
+          )}
 
           {analysis.sortedCategories.length > 0 ? (
             <div className="space-y-3">

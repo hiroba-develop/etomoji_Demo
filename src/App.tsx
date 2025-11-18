@@ -18,6 +18,7 @@ import ClientManagement from "./pages/ClientManagement";
 import UserManagement from "./pages/UserManagement";
 import MandalaChart from "./pages/MandalaChart";
 import SwipeChoiceComponent from "./pages/SwipeChoiceComponent";
+import SimulationScreen from "./pages/SimulationScreen";
 import { useEffect } from "react";
 
 // 認証が必要なページをラップするコンポーネント
@@ -202,6 +203,16 @@ const AppContent: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <SwipeChoiceComponent />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/simulation"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SimulationScreen />
             </Layout>
           </ProtectedRoute>
         }
