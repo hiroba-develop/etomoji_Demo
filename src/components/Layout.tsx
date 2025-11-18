@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Home,
+  // Home,
   Map,
   BarChart3,
-  MessageCircle,
+  // MessageCircle,
   Settings,
   Menu,
   X,
   LogOut,
-  Trophy,
+  // Trophy,
   Users,
   Briefcase,
   ChartBar,
