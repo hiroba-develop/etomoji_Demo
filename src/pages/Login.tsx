@@ -42,7 +42,12 @@ const Login: React.FC = () => {
 
   // すでにログイン済みの場合はリダイレクト
   if (user && !isLoading) {
-    return <Navigate to={user.isSetupComplete ? "/" : "/setup"} replace />;
+    return (
+      <Navigate
+        to={user.isSetupComplete ? "/mandalaChart" : "/setup"}
+        replace
+      />
+    );
   }
 
   const handleEmailLogin = async (e: React.FormEvent) => {
