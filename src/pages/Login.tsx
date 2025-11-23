@@ -93,13 +93,11 @@ const Login: React.FC = () => {
                 backgroundImage: "url(/mietoru_favicon.svg)",
               }}
               role="img"
-              aria-label="ミエトル"
+              aria-label="Kanaeru"
             />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">ミエトル</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            経営が見える、成長が実感できる (デモモード)
-          </p>
+          <h2 className="text-3xl font-bold text-gray-900">Kanaeru</h2>
+          <p className="mt-2 text-sm text-gray-600">HOME (デモモード)</p>
         </div>
 
         {/* デモログイン情報 */}

@@ -95,7 +95,7 @@ const AppContent: React.FC = () => {
     }
 
     // デモモード用のページタイトル設定
-    document.title = "ミエトル - 経営ダッシュボード (デモ版)";
+    document.title = "Kanaeru - HOME (デモ版)";
   }, []);
 
   return (

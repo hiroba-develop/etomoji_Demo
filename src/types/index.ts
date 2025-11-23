@@ -404,3 +404,49 @@ export interface UserRankingData {
   recentAwards: Award[];
   benchmarkData: BenchmarkData;
 }
+
+// マンダラチャート関連の型定義
+export interface MandalaGoal {
+  id: string;
+  title: string;
+  description?: string;
+  feeling?: string; // なぜこの目標を立てたのか
+  level: 'major' | 'middle' | 'minor'; // 大目標/中目標/小目標
+  parentId?: string; // 親目標のID
+  position: number; // 1-8の位置（中央は0）
+  achievement: number; // 0-100の達成度
+  status: 'not_started' | 'in_progress' | 'achieved'; // 未着手/進行中/達成
+  createdAt: Date;
+  updatedAt: Date;
+  achievedAt?: Date; // 達成日時
+}
+
+export interface MandalaMajorGoal extends MandalaGoal {
+  level: 'major';
+  middleGoals: MandalaMiddleGoal[]; // 8つの中目標
+}
+
+export interface MandalaMiddleGoal extends MandalaGoal {
+  level: 'middle';
+  minorGoals: MandalaMinorGoal[]; // 8つの小目標
+}
+
+export interface MandalaMinorGoal extends MandalaGoal {
+  level: 'minor';
+  isChecked: boolean; // ToDo的なチェック状態
+  linkedToYearlyTarget?: boolean; // 年次予実管理との連動フラグ
+}
+
+export interface MandalaChartData {
+  centerGoal: MandalaMajorGoal; // 中央の最終目標
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 予実管理との連動データ
+export interface YearlyTargetLink {
+  mandalaGoalId: string; // マンダラの目標ID（大目標or中目標）
+  yearlyTargetId: string; // 年次予実の目標ID
+  linkType: 'revenue' | 'profit' | 'custom'; // 売上/利益/カスタム
+  createdAt: Date;
+}

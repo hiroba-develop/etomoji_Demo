@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Save, Navigation } from "lucide-react";
+import { Save, Navigation, Link as LinkIcon } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
+import { onYearlyActualUpdate } from "../utils/mandalaIntegration";
 
 interface YearlyData {
   year: number;
@@ -293,9 +294,29 @@ const YearlyBudgetActual: React.FC = () => {
       setIsSaving(true);
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
+      // マンダラチャートとの連動：実績が更新された場合、該当する小目標を達成扱いに
+      let mandalaUpdated = false;
+      yearlyData.forEach((data) => {
+        const edits = pendingEdits[data.year] || {};
+        if (edits.revenueActual || edits.operatingProfitActual) {
+          const updated = onYearlyActualUpdate(data.year, {
+            revenueActual: edits.revenueActual || data.revenueActual,
+            operatingProfitActual: edits.operatingProfitActual || data.operatingProfitActual,
+          });
+          if (updated) {
+            mandalaUpdated = true;
+          }
+        }
+      });
+
       // 状態を更新
       setPendingEdits({});
-      alert("目標が正常に保存されました (デモモード)");
+      
+      if (mandalaUpdated) {
+        alert("目標が正常に保存されました (デモモード)\n\n✨ マンダラチャートの小目標も自動更新されました！");
+      } else {
+        alert("目標が正常に保存されました (デモモード)");
+      }
     } catch (err) {
       console.error("デモ目標保存エラー:", err);
       alert("目標の保存に失敗しました");
