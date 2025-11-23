@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Save, Navigation, Link as LinkIcon } from "lucide-react";
+import { Save, Navigation } from "lucide-react";
 import {
   LineChart,
   Line,

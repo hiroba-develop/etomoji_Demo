@@ -30,7 +30,6 @@ export const getMandalaData = () => {
  */
 export const convertMandalaGoalToYearlyTarget = (
   goalTitle: string,
-  goalLevel: "major" | "middle"
 ): {
   revenueTarget?: number;
   profitTarget?: number;
@@ -126,7 +125,7 @@ export const syncMandalaToYearlyTargets = () => {
 
   majorCells.forEach((cell: any) => {
     if (cell.title) {
-      const target = convertMandalaGoalToYearlyTarget(cell.title, "major");
+      const target = convertMandalaGoalToYearlyTarget(cell.title);
       yearlyTargets.push({
         goalId: cell.id,
         goalTitle: cell.title,
@@ -148,7 +147,7 @@ export const syncMandalaToYearlyTargets = () => {
  * 予実管理の実績入力時、該当する小目標を達成扱いにする
  */
 export const updateMinorGoalsFromActuals = (
-  year: number,
+  
   actualRevenue?: number,
   actualProfit?: number
 ) => {
@@ -173,7 +172,7 @@ export const updateMinorGoalsFromActuals = (
           lowerTitle.includes("販売"))
       ) {
         // 売上実績が目標を達成していればチェック
-        const target = convertMandalaGoalToYearlyTarget(cell.title, "middle");
+        const target = convertMandalaGoalToYearlyTarget(cell.title);
         if (
           target.revenueTarget &&
           actualRevenue >= target.revenueTarget
@@ -189,7 +188,7 @@ export const updateMinorGoalsFromActuals = (
           lowerTitle.includes("profit") ||
           lowerTitle.includes("収益"))
       ) {
-        const target = convertMandalaGoalToYearlyTarget(cell.title, "middle");
+        const target = convertMandalaGoalToYearlyTarget(cell.title);
         if (target.profitTarget && actualProfit >= target.profitTarget) {
           shouldCheck = true;
         }
@@ -285,7 +284,6 @@ export const onYearlyActualUpdate = (
   }
 ) => {
   const updated = updateMinorGoalsFromActuals(
-    year,
     data.revenueActual,
     data.operatingProfitActual
   );
