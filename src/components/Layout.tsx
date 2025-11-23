@@ -13,7 +13,6 @@ import {
   Users,
   Briefcase,
   ChartBar,
-  Brain,
   Home,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";

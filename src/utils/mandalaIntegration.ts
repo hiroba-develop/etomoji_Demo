@@ -1,6 +1,5 @@
 // マンダラチャートと予実管理の連動ユーティリティ
 
-import { MandalaGoal, YearlyTargetLink } from "../types";
 
 /**
  * マンダラチャートのデータを取得

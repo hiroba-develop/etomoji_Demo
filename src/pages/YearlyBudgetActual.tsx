@@ -296,12 +296,20 @@ const YearlyBudgetActual: React.FC = () => {
 
       // マンダラチャートとの連動：実績が更新された場合、該当する小目標を達成扱いに
       let mandalaUpdated = false;
-      yearlyData.forEach((data) => {
+      targets.forEach((data) => {
         const edits = pendingEdits[data.year] || {};
-        if (edits.revenueActual || edits.operatingProfitActual) {
+        if (
+          (edits as any).revenueActual ||
+          (edits as any).grossProfitActual ||
+          (edits as any).operatingProfitActual
+        ) {
           const updated = onYearlyActualUpdate(data.year, {
-            revenueActual: edits.revenueActual || data.revenueActual,
-            operatingProfitActual: edits.operatingProfitActual || data.operatingProfitActual,
+            revenueActual: (edits as any).revenueActual || data.revenueActual,
+            grossProfitActual:
+              (edits as any).grossProfitActual || data.grossProfitActual,
+            operatingProfitActual:
+              (edits as any).operatingProfitActual ||
+              data.operatingProfitActual,
           });
           if (updated) {
             mandalaUpdated = true;
@@ -311,9 +319,11 @@ const YearlyBudgetActual: React.FC = () => {
 
       // 状態を更新
       setPendingEdits({});
-      
+
       if (mandalaUpdated) {
-        alert("目標が正常に保存されました (デモモード)\n\n✨ マンダラチャートの小目標も自動更新されました！");
+        alert(
+          "目標が正常に保存されました (デモモード)\n\n✨ マンダラチャートの小目標も自動更新されました！"
+        );
       } else {
         alert("目標が正常に保存されました (デモモード)");
       }

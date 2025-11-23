@@ -531,38 +531,38 @@ const MandalaChart: React.FC = () => {
     );
   };
 
-  const getMajorCellProgress = (majorCellId: string) => {
-    const middleChart = middleCharts[majorCellId];
-    if (!middleChart) {
-      return { filledRings: 0, totalRings: 0, isCompleted: false };
-    }
+  // const getMajorCellProgress = (majorCellId: string) => {
+  //   const middleChart = middleCharts[majorCellId];
+  //   if (!middleChart) {
+  //     return { filledRings: 0, totalRings: 0, isCompleted: false };
+  //   }
 
-    const totalRings = middleChart.cells.length || 8; // 普段は 8 個の中目標
+  //   const totalRings = middleChart.cells.length || 8; // 普段は 8 個の中目標
 
-    // 🔽 10個すべてチェックされた「中目標」の数を数える
-    let completedMiddleCount = 0;
+  //   // 🔽 10個すべてチェックされた「中目標」の数を数える
+  //   let completedMiddleCount = 0;
 
-    middleChart.cells.forEach((middleCell) => {
-      const minorChart = minorCharts[middleCell.id];
-      if (!minorChart) return;
+  //   middleChart.cells.forEach((middleCell) => {
+  //     const minorChart = minorCharts[middleCell.id];
+  //     if (!minorChart) return;
 
-      const checkedCount = minorChart.cells.filter((c) => c.isChecked).length;
+  //     const checkedCount = minorChart.cells.filter((c) => c.isChecked).length;
 
-      // 🔽 小目標10/10チェックで、その中目標はコンプリート
-      if (checkedCount === 10) {
-        completedMiddleCount += 1;
-      }
-    });
+  //     // 🔽 小目標10/10チェックで、その中目標はコンプリート
+  //     if (checkedCount === 10) {
+  //       completedMiddleCount += 1;
+  //     }
+  //   });
 
-    const filledRings = completedMiddleCount;
-    const isCompleted = filledRings >= totalRings && totalRings > 0;
+  //   const filledRings = completedMiddleCount;
+  //   const isCompleted = filledRings >= totalRings && totalRings > 0;
 
-    return {
-      filledRings,
-      totalRings,
-      isCompleted,
-    };
-  };
+  //   return {
+  //     filledRings,
+  //     totalRings,
+  //     isCompleted,
+  //   };
+  // };
 
   // 🔽 大目標セル用：各中目標ごとに「チェック数 / 10」の割合を配列で返す
   const getMajorRingRatios = (majorCellId: string): number[] => {
